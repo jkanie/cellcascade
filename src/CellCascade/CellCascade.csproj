@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>CellCascade</RootNamespace>
+    <Description>A spreadsheet formula engine that re-calculates only the cells that a change reaches.</Description>
+  </PropertyGroup>
+
+</Project>

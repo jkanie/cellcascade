@@ -1,0 +1,69 @@
+:root {
+  --bg: #f6f7f9;
+  --fg: #1c2330;
+  --muted: #5d6676;
+  --line: #d3d8e0;
+  --cell: #ffffff;
+  --head: #eceff3;
+  --pick: #2f5bb7;
+  --flash: #ffe58a;
+  --error: #b42318;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171c;
+    --fg: #e4e8ee;
+    --muted: #98a1b0;
+    --line: #2f3643;
+    --cell: #1b2028;
+    --head: #222833;
+    --pick: #86a5f2;
+    --flash: #6b5a12;
+    --error: #ff8a7a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 16px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
+h1 { font-size: 1.2rem; margin: 0; }
+header input { width: 10rem; }
+
+#bar { display: flex; gap: 8px; margin: 12px 0 4px; min-width: 0; }
+#ref { font-weight: 600; min-width: 3.5rem; align-self: center; }
+#bar input { flex: 1; min-width: 0; font: inherit; padding: 6px 8px; }
+button { font: inherit; padding: 6px 14px; }
+
+#status { min-height: 1.4em; margin: 0 0 8px; color: var(--muted); }
+#status.bad { color: var(--error); }
+
+/* The grid scrolls inside its own box, so the page itself never scrolls sideways. */
+#wrap { overflow: auto; max-width: 100%; border: 1px solid var(--line); }
+table { border-collapse: collapse; }
+th, td { border: 1px solid var(--line); padding: 4px 6px; white-space: nowrap; }
+th { background: var(--head); color: var(--muted); font-weight: 500; position: sticky; top: 0; }
+th.row { position: sticky; left: 0; }
+td { background: var(--cell); min-width: 6.5rem; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+td.number { text-align: right; font-variant-numeric: tabular-nums; }
+td.error { color: var(--error); }
+td.picked { outline: 2px solid var(--pick); outline-offset: -2px; }
+td.flash { animation: flash 1.2s ease-out; }
+
+@keyframes flash {
+  from { background: var(--flash); }
+  to { background: var(--cell); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  td.flash { animation: none; outline: 2px dashed var(--pick); outline-offset: -2px; }
+}

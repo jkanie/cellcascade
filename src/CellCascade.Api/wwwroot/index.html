@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cellcascade</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>cellcascade</h1>
+    <label>Sheet <input id="sheet" value="demo" maxlength="64" autocomplete="off"></label>
+  </header>
+  <form id="bar" autocomplete="off">
+    <span id="ref" aria-live="polite">A1</span>
+    <input id="input" aria-label="Input of the selected cell" placeholder="A value, or a formula such as =SUM(A1:A3)">
+    <button type="submit">Set</button>
+  </form>
+  <p id="status" role="status"></p>
+  <div id="wrap">
+    <table id="grid" aria-label="Cells"></table>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
