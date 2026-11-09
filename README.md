@@ -11,6 +11,7 @@ A spreadsheet formula engine for .NET, with an HTTP API and a small grid screen.
 - Gives Excel's error values: `#DIV/0!`, `#VALUE!`, `#REF!`, `#NAME?`, `#NUM!`, `#N/A`.
 - Answers every edit with the cells that changed and the cells that were re-calculated, in order. The grid screen flashes those cells, so the cascade is visible.
 - Refuses a formula that cannot be read with a reason and a position (`D6: A cell address must follow ':' at position 8.`). The sheet then stays as it was.
+- Saves each sheet's inputs in SQLite (the default) or PostgreSQL through Entity Framework Core. The values are not saved -- they are re-calculated when the app loads the sheets, so a re-start gives the same values.
 
 ## Who it is for
 
@@ -19,7 +20,8 @@ A spreadsheet formula engine for .NET, with an HTTP API and a small grid screen.
 ## Built with
 
 - C# on .NET 10 (SDK 10.0.114, ASP.NET Core 10.0.14 runtime). The engine uses only the .NET base library.
-- ASP.NET Core minimal APIs for the HTTP API, with the sheets kept in memory.
+- ASP.NET Core minimal APIs for the HTTP API.
+- Entity Framework Core 10.0.14 to save the sheets: Microsoft.EntityFrameworkCore.Sqlite 10.0.14 for SQLite, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 for PostgreSQL.
 - A grid screen in plain HTML, CSS, JavaScript (no build step), served by the API.
 - Tests: xUnit v3 4.0.3 on Microsoft.Testing.Platform, plus Microsoft.AspNetCore.Mvc.Testing 10.0.14 for the API tests.
 
@@ -31,7 +33,37 @@ You need the .NET 10 SDK.
 dotnet run --project src/CellCascade.Api --urls http://localhost:5080
 ```
 
-Then open http://localhost:5080 for the grid screen, or call the API at `http://localhost:5080/api`. The app starts with a sample sheet called `demo`: a made-up budget with 3 lines, a 10% discount, a total, a check against the budget.
+Then open http://localhost:5080 for the grid screen, or call the API at `http://localhost:5080/api`. With no set-up, the app saves the sheets in the SQLite file `src/CellCascade.Api/cellcascade.db`, which it creates on the 1st start. A new database starts with a sample sheet called `demo`: a made-up budget with 3 lines, a 10% discount, a total, a check against the budget.
+
+## Database
+
+The app saves 1 row per sheet (its name) and 1 row per cell that is not blank (the sheet name, the cell address, the input). It does not save values. When the app starts, it loads every sheet from its inputs, which re-calculates every formula. The sheets then stay in memory, and each edit is saved before the answer goes out. When a save fails, the sheet gets its old inputs back and the request fails.
+
+The settings live in `src/CellCascade.Api/appsettings.json`:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `Database:Provider` | `Sqlite` | `Sqlite` or `PostgreSql`. Any other value stops the start with an error. |
+| `Database:SqlitePath` | `cellcascade.db` | The SQLite file. A relative path starts at the content root, which is `src/CellCascade.Api` under `dotnet run --project src/CellCascade.Api`. |
+| `ConnectionStrings:PostgreSql` | empty | The Npgsql connection string. It is needed when the provider is `PostgreSql`, and the start stops with an error without it. |
+
+Environment variables override the file, with `__` in place of `:`. To run on PostgreSQL:
+
+```sh
+Database__Provider=PostgreSql \
+ConnectionStrings__PostgreSql="Host=localhost;Database=cellcascade;Username=postgres;Password=postgres" \
+dotnet run --project src/CellCascade.Api --urls http://localhost:5080
+```
+
+When the database in the connection string does not exist, the app creates it, so the login needs the right to create a database. This was checked by hand on PostgreSQL 17.11: the app created the database, saved an edit to `demo`, then showed the edited values after a re-start.
+
+The app makes its tables with EF Core's `EnsureCreated`, not with migrations:
+
+- EF Core makes migrations for 1 provider at a time. SQLite plus PostgreSQL would need 2 sets of migrations, with a new migration in each set for every change to the model ([EF Core docs](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/providers)).
+- The schema is 2 small tables, `Sheets` and `Cells`, with nothing to migrate yet.
+- The cost: `EnsureCreated` makes the tables only in a database that has no tables at all, and it never changes tables that exist. A later change to the schema needs migrations, and the simplest move from `EnsureCreated` to migrations starts from a new database ([EF Core docs](https://learn.microsoft.com/en-us/ef/core/managing-schemas/ensure-created)). For the same reason, give the app a database of its own.
+
+The sample sheet is written only when the app makes the tables, so a deleted `demo` sheet stays deleted after a re-start.
 
 ## Tests
 
@@ -40,12 +72,19 @@ dotnet format --verify-no-changes
 dotnet test
 ```
 
-168 tests:
+180 tests, of which 1 is skipped unless a PostgreSQL server is given (see below):
 
 - The oracle test applies 12,000 random edits (300 seeded random sheets of 25 cells, 40 edits each) and checks the engine after every edit against a slow reference sheet in `tests/CellCascade.Tests/ReferenceSheet.cs`. The reference keeps no graph: it works out every value again from scratch, with its own walk for references and its own cycle check. The test compares every value, the exact set of cells re-calculated, their order, the cells in a cycle, the cells that changed. The random formulas cover arithmetic, comparison, `&`, ranges, lookups, IF branches, IFERROR, cycles (more than 500 of the edits make 1).
 - Another test applies 100 random batches in 2 orders and requires the same values.
 - Unit tests pin the operator order, the type rules, every function (with Excel's results for cases such as `ROUND(1.005,2)`, which is 1.01), the input rules, the parse faults, a chain of 100,000 cells, a cycle of 100,000 cells.
-- API tests start the app in memory and cover the sample sheet, the cascade answer, batches, cycles, a cell's precedents and dependents, refusals (400 and 404).
+- API tests start the app in memory, each app on a SQLite file of its own in the temp folder, and cover the sample sheet, the cascade answer, batches, cycles, a cell's precedents and dependents, refusals (400 and 404).
+- Database tests (`tests/CellCascade.Tests/PersistenceTests.cs`) run on an in-memory SQLite connection and on temp files. They check that a 2nd store on the same database loads every sheet with the same inputs and values, that only inputs are saved, that values are re-calculated from the inputs on load (an input changed in the database shows up in the values), that a cleared cell loses its row, that a refused formula saves nothing, that a failed save puts the old inputs back in the sheet, that sheet names ignore case, that the settings pick the right database, that 2 starts of the app on 1 file give the same answers, that a deleted sheet stays deleted.
+
+The PostgreSQL test runs the same checks as the 1st database test on a PostgreSQL server. It needs a connection string in `CELLCASCADE_TEST_POSTGRESQL`, makes a database with a random name, then drops it. CI does not set the variable, so CI skips the test. It passed against PostgreSQL 17.11:
+
+```sh
+CELLCASCADE_TEST_POSTGRESQL="Host=localhost;Username=postgres;Password=postgres" dotnet test
+```
 
 On every push and pull request, GitHub Actions runs `dotnet format --verify-no-changes`, `dotnet build`, `dotnet test` on Linux, Windows, macOS with .NET 10 (see [.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
@@ -93,7 +132,7 @@ All requests and answers are JSON.
 | GET | `/api/sheets/{name}/cells/{cell}` | Shows 1 cell, with the cells it reads (precedents) and the cells that read it (dependents). |
 | PUT | `/api/sheets/{name}/cells/{cell}` | Sets 1 cell: `{"input": "=A1*2"}`. Creates the sheet when needed. |
 | POST | `/api/sheets/{name}/cells` | Sets up to 10,000 cells, then re-calculates 1 time: `{"cells": {"A1": "1", "B1": "=A1*2"}}`. |
-| DELETE | `/api/sheets/{name}` | Removes a sheet. |
+| DELETE | `/api/sheets/{name}` | Removes a sheet and its saved cells. |
 | GET | `/api/functions` | Lists the function names. |
 
 An edit answers with `changed` (each cell whose value changed), `recalculated` (the formulas evaluated, in order), `inCycle` (the cells in a cycle). A formula that cannot be read gives 400 with an `error` message. Nothing changes in that case.
@@ -188,11 +227,12 @@ The 5 formulas that depend on B4 ran in order. The other 2 formulas on the sheet
 | Change A1, which re-calculates all 99,999 formulas | 142 to 333 |
 | Change A99999, which re-calculates 1 formula | 2.1 |
 
-Repeatable benchmarks are item 2 in [ROADMAP.md](ROADMAP.md).
+Repeatable benchmarks are item 1 in [ROADMAP.md](ROADMAP.md).
 
 ## Limits today
 
-- The sheets live in memory, so a restart loses them. Saving them to a database is item 1 in [ROADMAP.md](ROADMAP.md).
+- The app reads the database only when it starts. 2 copies of the app on 1 database do not see each other's edits, so run 1 copy per database.
+- Every sheet stays in memory, so the memory use and the start time grow with the number of cells.
 - The `$` signs in a reference are read and ignored, because there is no copy or fill yet.
 - There is no sign-in. Anyone who can reach the API can change any sheet.
 - The grid screen shows 8 columns and 20 rows.

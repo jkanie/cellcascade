@@ -1,10 +1,18 @@
 using System.Text.RegularExpressions;
 using CellCascade;
 using CellCascade.Api;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// This reads the settings when the app first needs the database, not on this line, such that settings that tests add count too.
+builder.Services.AddDbContextFactory<SheetDbContext>((services, options) =>
+    DatabaseConfig.Configure(options, services.GetRequiredService<IConfiguration>(), services.GetRequiredService<IHostEnvironment>().ContentRootPath));
 builder.Services.AddSingleton<SheetStore>();
 var app = builder.Build();
+
+// Opens the database and loads every sheet before the first request, such that a bad setting stops the start.
+app.Services.GetRequiredService<SheetStore>();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
@@ -101,23 +109,16 @@ static IResult Edit(string name, SheetStore store, List<KeyValuePair<CellAddress
         return Results.BadRequest(new ErrorDto("A sheet name has 1 to 64 letters, digits, - or _."));
     }
 
-    var sheet = store.GetOrAdd(name);
-    lock (sheet)
+    try
     {
-        RecalcResult result;
-        try
-        {
-            result = sheet.Set(edits);
-        }
-        catch (FormulaException e)
-        {
-            return Results.BadRequest(new ErrorDto(e.Message));
-        }
-
-        return Results.Ok(new EditResultDto(
+        return store.Edit(name, edits, (sheet, result) => Results.Ok(new EditResultDto(
             [.. result.Changed.Select(a => new CellDto(a.ToString(), sheet.GetInput(a), ValueDto.From(sheet.ValueAt(a))))],
             [.. result.Recalculated.Select(a => a.ToString())],
-            [.. result.InCycle.Select(a => a.ToString())]));
+            [.. result.InCycle.Select(a => a.ToString())])));
+    }
+    catch (FormulaException e)
+    {
+        return Results.BadRequest(new ErrorDto(e.Message));
     }
 }
 

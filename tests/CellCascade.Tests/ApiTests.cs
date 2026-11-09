@@ -1,15 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
 using CellCascade.Api;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace CellCascade.Tests;
 
-public sealed class ApiTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ApiTests : IClassFixture<ApiFactory>
 {
     private readonly HttpClient client;
 
-    public ApiTests(WebApplicationFactory<Program> factory)
+    public ApiTests(ApiFactory factory)
     {
         ArgumentNullException.ThrowIfNull(factory);
         client = factory.CreateClient();
@@ -32,8 +31,8 @@ public sealed class ApiTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task An_edit_answers_with_the_cascade_it_caused()
     {
-        // A fresh app, such that this edit does not change the sample sheet for the other tests.
-        await using var factory = new WebApplicationFactory<Program>();
+        // A fresh app with its own database, such that this edit does not change the sample sheet for the other tests.
+        await using var factory = new ApiFactory();
         using var own = factory.CreateClient();
         var answer = await own.PutAsJsonAsync("/api/sheets/demo/cells/B4", new CellEdit("2"), Token);
         answer.EnsureSuccessStatusCode();
