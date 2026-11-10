@@ -24,6 +24,7 @@ A spreadsheet formula engine for .NET, with an HTTP API and a small grid screen.
 - Entity Framework Core 10.0.14 to save the sheets: Microsoft.EntityFrameworkCore.Sqlite 10.0.14 for SQLite, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 for PostgreSQL.
 - A grid screen in plain HTML, CSS, JavaScript (no build step), served by the API.
 - Tests: xUnit v3 4.0.3 on Microsoft.Testing.Platform, plus Microsoft.AspNetCore.Mvc.Testing 10.0.14 for the API tests.
+- Benchmarks: BenchmarkDotNet 0.15.8 (see [Speed](#speed)).
 
 ## Set-up
 
@@ -219,15 +220,24 @@ The 5 formulas that depend on B4 ran in order. The other 2 formulas on the sheet
 
 ## Speed
 
-1 run each, measured in a Release build on a 2-core cloud machine (Intel Xeon at 2.10 GHz), so the times vary from run to run:
+The numbers come from BenchmarkDotNet 0.15.8 (its default job: warm-up, then repeated runs until the result is stable) in `benchmarks/CellCascade.Benchmarks`. They were measured on 2026-11-09 on a 2-core cloud machine (Intel Xeon at 2.30 GHz, Ubuntu 24.04, .NET 10.0.14), so another machine gives other numbers. Compare runs made on the same machine.
 
-| Work | Time (ms) |
-|---|---|
-| Load a chain of 100,000 formulas (A2 is `=A1+1`, and so on) | 839 |
-| Change A1, which re-calculates all 99,999 formulas | 142 to 333 |
-| Change A99999, which re-calculates 1 formula | 2.1 |
+| Benchmark | Mean | Standard deviation | Allocated |
+|---|---|---|---|
+| Load a chain of 100,000 formulas (A2 is `=A1+1`, and so on) | 272.0 ms | 10.8 ms | 198.1 MB |
+| Change A1, which re-calculates all 99,999 formulas | 86.0 ms | 5.7 ms | 81.6 MB |
+| Change A99999, which re-calculates 1 formula | 0.90 µs | 0.01 µs | 3.1 KB |
+| Change A5000 under 100 formulas that each read `=SUM(A1:A10000)` | 25.9 ms | 0.4 ms | 25.1 MB |
 
-Repeatable benchmarks are item 1 in [ROADMAP.md](ROADMAP.md).
+Each change sets a new number, so every run of it does the same work. Before any timing starts, each benchmark checks that its change re-calculates the number of formulas its name gives, and stops with an error if not.
+
+Run them in a Release build:
+
+```sh
+dotnet run -c Release --project benchmarks/CellCascade.Benchmarks -- --filter '*'
+```
+
+`--filter '*Chain*'` runs the chain only. BenchmarkDotNet writes Markdown, CSV, HTML reports to `BenchmarkDotNet.Artifacts/results`, which Git ignores. CI builds the benchmark project but does not run it, because the times of a shared CI machine vary too much to compare.
 
 ## Limits today
 
