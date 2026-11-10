@@ -5,7 +5,7 @@ A spreadsheet formula engine for .NET, with an HTTP API and a small grid screen.
 ## What it does
 
 - Reads formulas with Excel's operator order: `=-2^2` is 4 and `=2^3^2` is 64, as in Excel.
-- Supports numbers, text, TRUE and FALSE, cell references (`A1`, `$B$2`), ranges (`A1:C10`). It has 18 functions: ABS, AND, AVERAGE, CONCAT, COUNT, COUNTA, IF, IFERROR, LEN, LOWER, MAX, MIN, NOT, OR, ROUND, SUM, UPPER, VLOOKUP.
+- Supports numbers, text, TRUE and FALSE, cell references (`A1`, `$B$2`), ranges (`A1:C10`). It has 22 functions: ABS, AND, AVERAGE, CONCAT, COUNT, COUNTA, IF, IFERROR, INT, LEN, LOWER, MAX, MIN, MOD, NOT, OR, ROUND, ROUNDDOWN, ROUNDUP, SUM, UPPER, VLOOKUP.
 - Keeps a dependency graph of the sheet. A change re-calculates the changed cells' dependents (directly or through other cells), each 1 time. Every other cell stays as it was.
 - Finds circular references with Tarjan's algorithm and marks every cell in a cycle `#CYCLE!`. A cell that reads a cycle gets the error too, unless IFERROR catches it.
 - Gives Excel's error values: `#DIV/0!`, `#VALUE!`, `#REF!`, `#NAME?`, `#NUM!`, `#N/A`.
@@ -73,7 +73,7 @@ dotnet format --verify-no-changes
 dotnet test
 ```
 
-180 tests, of which 1 is skipped unless a PostgreSQL server is given (see below):
+203 tests, of which 1 is skipped unless a PostgreSQL server is given (see below):
 
 - The oracle test applies 12,000 random edits (300 seeded random sheets of 25 cells, 40 edits each) and checks the engine after every edit against a slow reference sheet in `tests/CellCascade.Tests/ReferenceSheet.cs`. The reference keeps no graph: it works out every value again from scratch, with its own walk for references and its own cycle check. The test compares every value, the exact set of cells re-calculated, their order, the cells in a cycle, the cells that changed. The random formulas cover arithmetic, comparison, `&`, ranges, lookups, IF branches, IFERROR, cycles (more than 500 of the edits make 1).
 - Another test applies 100 random batches in 2 orders and requires the same values.
@@ -102,7 +102,7 @@ Types follow Excel's rules:
 - Comparison puts every number before every text and every text before TRUE and FALSE. Text compares without regard to case.
 - SUM, AVERAGE, MIN, MAX, COUNT skip text and booleans inside ranges and references, but turn a value typed into the call into a number (`=SUM("3",TRUE)` is 4).
 - IF and IFERROR evaluate only the argument that they return.
-- ROUND rounds half away from 0. VLOOKUP looks up approximately unless its 4th argument is FALSE.
+- ROUND rounds half away from 0. ROUNDUP rounds away from 0 and ROUNDDOWN toward 0, as in Excel. INT rounds down to the next whole number, so INT(-8.9) is -9. MOD has the sign of the divisor, so MOD(-3,2) is 1. VLOOKUP looks up approximately unless its 4th argument is FALSE.
 - When both sides of an operator hold errors, the left 1 wins.
 
 Where this engine differs from Excel:

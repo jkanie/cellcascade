@@ -22,6 +22,10 @@ public static class Functions
         ["IFERROR"] = (2, 2),
         ["ABS"] = (1, 1),
         ["ROUND"] = (2, 2),
+        ["ROUNDUP"] = (2, 2),
+        ["ROUNDDOWN"] = (2, 2),
+        ["INT"] = (1, 1),
+        ["MOD"] = (2, 2),
         ["CONCAT"] = (1, Many),
         ["LEN"] = (1, 1),
         ["UPPER"] = (1, 1),
@@ -62,7 +66,11 @@ public static class Functions
             "IF" => If(args, source),
             "IFERROR" => IfError(args, source),
             "ABS" => NumberFunction(args[0], source, Math.Abs),
-            "ROUND" => Round(args, source),
+            "ROUND" => Round(args, source, Rounding.HalfAwayFromZero),
+            "ROUNDUP" => Round(args, source, Rounding.AwayFromZero),
+            "ROUNDDOWN" => Round(args, source, Rounding.TowardZero),
+            "INT" => NumberFunction(args[0], source, Math.Floor),
+            "MOD" => Mod(args, source),
             "CONCAT" => Concat(args, source),
             "LEN" => TextFunction(args[0], source, text => CellValue.Of(text.Length)),
             "UPPER" => TextFunction(args[0], source, text => CellValue.Of(text.ToUpperInvariant())),
@@ -214,8 +222,19 @@ public static class Functions
     private static CellValue TextFunction(Expr arg, IValueSource source, Func<string, CellValue> function) =>
         Evaluator.TryText(Scalar(arg, source), out var text, out var error) ? function(text) : error!;
 
-    /// <summary>ROUND rounds half away from 0, as Excel does, so ROUND(2.5, 0) is 3 and ROUND(-2.5, 0) is -3.</summary>
-    private static CellValue Round(IReadOnlyList<Expr> args, IValueSource source)
+    private enum Rounding
+    {
+        HalfAwayFromZero,
+        AwayFromZero,
+        TowardZero,
+    }
+
+    /// <summary>
+    /// ROUND rounds half away from 0, as Excel does, so ROUND(2.5, 0) is 3 and ROUND(-2.5, 0) is -3.
+    /// ROUNDUP rounds away from 0, so ROUNDUP(-3.14159, 1) is -3.2. ROUNDDOWN rounds toward 0, so
+    /// ROUNDDOWN(-3.14159, 1) is -3.1. A negative 2nd argument rounds to the left of the decimal point.
+    /// </summary>
+    private static CellValue Round(IReadOnlyList<Expr> args, IValueSource source, Rounding rounding)
     {
         if (!Evaluator.TryNumber(Scalar(args[0], source), out var number, out var error))
         {
@@ -233,20 +252,49 @@ public static class Functions
             return CellValue.Of(number);
         }
 
+        var mode = rounding switch
+        {
+            Rounding.HalfAwayFromZero => MidpointRounding.AwayFromZero,
+            Rounding.TowardZero => MidpointRounding.ToZero,
+            _ => number < 0 ? MidpointRounding.ToNegativeInfinity : MidpointRounding.ToPositiveInfinity,
+        };
+
+        // A double holds 1.005 as 1.00499999..., which rounds to 1. The decimal conversion keeps 15 digits,
+        // which gives exactly 1.005, so ROUND(1.005, 2) is 1.01, as in Excel. For the same reason,
+        // ROUNDUP(0.1 + 0.2, 1) is 0.3, not 0.4.
         if (digits >= 0)
         {
-            // A double holds 1.005 as 1.00499999..., which rounds to 1. The decimal conversion keeps 15 digits,
-            // which gives exactly 1.005, so ROUND(1.005, 2) is 1.01, as in Excel.
             if (Math.Abs(number) < 7.9e27)
             {
-                return CellValue.Of((double)Math.Round((decimal)number, digits, MidpointRounding.AwayFromZero));
+                return CellValue.Of((double)Math.Round((decimal)number, digits, mode));
             }
 
-            return CellValue.Of(Math.Round(number, digits, MidpointRounding.AwayFromZero));
+            return CellValue.Of(Math.Round(number, digits, mode));
         }
 
         var factor = Math.Pow(10, -digits);
-        return CellValue.Of(Math.Round(number / factor, MidpointRounding.AwayFromZero) * factor);
+        return CellValue.Of(Math.Round(number / factor, mode) * factor);
+    }
+
+    /// <summary>MOD(number, divisor) has the sign of the divisor, as in Excel, so MOD(-3, 2) is 1. A divisor of 0 gives #DIV/0!.</summary>
+    private static CellValue Mod(IReadOnlyList<Expr> args, IValueSource source)
+    {
+        if (!Evaluator.TryNumber(Scalar(args[0], source), out var number, out var error))
+        {
+            return error!;
+        }
+
+        if (!Evaluator.TryNumber(Scalar(args[1], source), out var divisor, out error))
+        {
+            return error!;
+        }
+
+        if (divisor == 0)
+        {
+            return CellValue.Error(ErrorKind.DivideByZero);
+        }
+
+        return CellValue.Of(number - (divisor * Math.Floor(number / divisor)));
     }
 
     private static CellValue Concat(IReadOnlyList<Expr> args, IValueSource source)
