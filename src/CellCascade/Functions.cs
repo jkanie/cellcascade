@@ -30,6 +30,10 @@ public static class Functions
         ["LEN"] = (1, 1),
         ["UPPER"] = (1, 1),
         ["LOWER"] = (1, 1),
+        ["LEFT"] = (1, 2),
+        ["RIGHT"] = (1, 2),
+        ["MID"] = (3, 3),
+        ["TRIM"] = (1, 1),
         ["VLOOKUP"] = (3, 4),
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
@@ -75,6 +79,10 @@ public static class Functions
             "LEN" => TextFunction(args[0], source, text => CellValue.Of(text.Length)),
             "UPPER" => TextFunction(args[0], source, text => CellValue.Of(text.ToUpperInvariant())),
             "LOWER" => TextFunction(args[0], source, text => CellValue.Of(text.ToLowerInvariant())),
+            "LEFT" => Take(args, source, fromEnd: false),
+            "RIGHT" => Take(args, source, fromEnd: true),
+            "MID" => Mid(args, source),
+            "TRIM" => TextFunction(args[0], source, text => CellValue.Of(Trim(text))),
             "VLOOKUP" => VLookup(args, source),
             _ => CellValue.Error(ErrorKind.Name),
         };
@@ -221,6 +229,73 @@ public static class Functions
 
     private static CellValue TextFunction(Expr arg, IValueSource source, Func<string, CellValue> function) =>
         Evaluator.TryText(Scalar(arg, source), out var text, out var error) ? function(text) : error!;
+
+    /// <summary>
+    /// LEFT and RIGHT take num_chars characters (1 when it is left out) from the start or the end of the text, or all
+    /// of it when num_chars is longer. A fraction is cut toward 0, and a count below 0 gives #VALUE!.
+    /// </summary>
+    private static CellValue Take(IReadOnlyList<Expr> args, IValueSource source, bool fromEnd)
+    {
+        if (!Evaluator.TryText(Scalar(args[0], source), out var text, out var error))
+        {
+            return error!;
+        }
+
+        var count = 1.0;
+        if (args.Count == 2 && !Evaluator.TryNumber(Scalar(args[1], source), out count, out error))
+        {
+            return error!;
+        }
+
+        if (count < 0)
+        {
+            return CellValue.Error(ErrorKind.Value);
+        }
+
+        var n = (int)Math.Min(Math.Truncate(count), text.Length);
+        return CellValue.Of(fromEnd ? text[^n..] : text[..n]);
+    }
+
+    /// <summary>
+    /// MID(text, start_num, num_chars) counts from 1. A start past the end gives empty text, a start below 1 or a
+    /// negative count gives #VALUE!, and a count past the end stops at the end, as Microsoft documents.
+    /// </summary>
+    private static CellValue Mid(IReadOnlyList<Expr> args, IValueSource source)
+    {
+        if (!Evaluator.TryText(Scalar(args[0], source), out var text, out var error))
+        {
+            return error!;
+        }
+
+        if (!Evaluator.TryNumber(Scalar(args[1], source), out var start, out error))
+        {
+            return error!;
+        }
+
+        if (!Evaluator.TryNumber(Scalar(args[2], source), out var count, out error))
+        {
+            return error!;
+        }
+
+        start = Math.Truncate(start);
+        count = Math.Truncate(count);
+        if (start < 1 || count < 0)
+        {
+            return CellValue.Error(ErrorKind.Value);
+        }
+
+        if (start > text.Length)
+        {
+            return CellValue.Of(string.Empty);
+        }
+
+        var from = (int)start - 1;
+        return CellValue.Of(text.Substring(from, (int)Math.Min(count, text.Length - from)));
+    }
+
+    /// <summary>TRIM drops the spaces (character 32 only) at both ends and leaves 1 space between words.</summary>
+    private static string Trim(string text) =>
+        string.Join(' ', text.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
     private enum Rounding
     {
