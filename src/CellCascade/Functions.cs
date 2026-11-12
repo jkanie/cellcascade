@@ -1,4 +1,6 @@
 using System.Collections.Frozen;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace CellCascade;
 
@@ -36,6 +38,8 @@ public static class Functions
         ["TRIM"] = (1, 1),
         ["FIND"] = (2, 3),
         ["SUBSTITUTE"] = (3, 4),
+        ["SEARCH"] = (2, 3),
+        ["REPLACE"] = (4, 4),
         ["VLOOKUP"] = (3, 4),
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
@@ -87,6 +91,8 @@ public static class Functions
             "TRIM" => TextFunction(args[0], source, text => CellValue.Of(Trim(text))),
             "FIND" => Find(args, source),
             "SUBSTITUTE" => Substitute(args, source),
+            "SEARCH" => Search(args, source),
+            "REPLACE" => Replace(args, source),
             "VLOOKUP" => VLookup(args, source),
             _ => CellValue.Error(ErrorKind.Name),
         };
@@ -325,6 +331,93 @@ public static class Functions
 
         var at = within.IndexOf(find, (int)start - 1, StringComparison.Ordinal);
         return at < 0 ? CellValue.Error(ErrorKind.Value) : CellValue.Of(at + 1);
+    }
+
+    /// <summary>
+    /// SEARCH(find_text, within_text, start_num) is FIND without case, and with wild-cards in find_text: ? matches
+    /// any 1 character and * any run of characters, while ~ before ? or * matches that character itself. The start
+    /// rules and the #VALUE! cases are those of FIND, as Microsoft documents for SEARCH.
+    /// </summary>
+    private static CellValue Search(IReadOnlyList<Expr> args, IValueSource source)
+    {
+        if (!Evaluator.TryText(Scalar(args[0], source), out var find, out var error)
+            || !Evaluator.TryText(Scalar(args[1], source), out var within, out error))
+        {
+            return error!;
+        }
+
+        var start = 1.0;
+        if (args.Count == 3 && !Evaluator.TryNumber(Scalar(args[2], source), out start, out error))
+        {
+            return error!;
+        }
+
+        start = Math.Truncate(start);
+        if (start < 1 || start > within.Length)
+        {
+            return CellValue.Error(ErrorKind.Value);
+        }
+
+        var match = WildcardPattern(find).Match(within, (int)start - 1);
+        return match.Success ? CellValue.Of(match.Index + 1) : CellValue.Error(ErrorKind.Value);
+    }
+
+    /// <summary>Turns SEARCH's find_text into a regular expression that ignores case.</summary>
+    internal static Regex WildcardPattern(string find)
+    {
+        var pattern = new StringBuilder();
+        for (var i = 0; i < find.Length; i++)
+        {
+            var c = find[i];
+            if (c == '~' && i + 1 < find.Length && find[i + 1] is '?' or '*' or '~')
+            {
+                pattern.Append(Regex.Escape(find[++i].ToString()));
+            }
+            else if (c == '?')
+            {
+                pattern.Append('.');
+            }
+            else if (c == '*')
+            {
+                pattern.Append(".*?");
+            }
+            else
+            {
+                pattern.Append(Regex.Escape(c.ToString()));
+            }
+        }
+
+        return new Regex(
+            pattern.ToString(),
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline,
+            TimeSpan.FromSeconds(1));
+    }
+
+    /// <summary>
+    /// REPLACE(old_text, start_num, num_chars, new_text) puts new_text in place of num_chars characters of old_text
+    /// from position start_num (from 1). A start past the end adds new_text at the end, and a span past the end stops
+    /// there. A start_num below 1 or a num_chars below 0 gives #VALUE!. Fractions are cut toward 0.
+    /// </summary>
+    private static CellValue Replace(IReadOnlyList<Expr> args, IValueSource source)
+    {
+        if (!Evaluator.TryText(Scalar(args[0], source), out var text, out var error)
+            || !Evaluator.TryNumber(Scalar(args[1], source), out var start, out error)
+            || !Evaluator.TryNumber(Scalar(args[2], source), out var count, out error)
+            || !Evaluator.TryText(Scalar(args[3], source), out var replacement, out error))
+        {
+            return error!;
+        }
+
+        start = Math.Truncate(start);
+        count = Math.Truncate(count);
+        if (start < 1 || count < 0)
+        {
+            return CellValue.Error(ErrorKind.Value);
+        }
+
+        var from = (int)Math.Min(start - 1, text.Length);
+        var to = (int)Math.Min(from + count, text.Length);
+        return CellValue.Of(string.Concat(text.AsSpan(0, from), replacement, text.AsSpan(to)));
     }
 
     /// <summary>

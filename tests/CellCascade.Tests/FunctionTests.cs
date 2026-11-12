@@ -161,6 +161,44 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula));
     }
 
+    // The 1st 10 rows are Microsoft's examples for SEARCH and REPLACE, with their data cells written in.
+    [Theory]
+    [InlineData("=SEARCH(\"e\",\"Statements\",6)", "7")]
+    [InlineData("=SEARCH(\"margin\",\"Profit Margin\")", "8")]
+    [InlineData("=REPLACE(\"Profit Margin\",SEARCH(\"margin\",\"Profit Margin\"),6,\"Amount\")", "Profit Amount")]
+    [InlineData("=MID(\"Profit Margin\",SEARCH(\" \",\"Profit Margin\")+1,4)", "Marg")]
+    [InlineData("=SEARCH(\"Y\",\"AYF0093.YoungMensApparel\",8)", "9")]
+    [InlineData("=REPLACE(\"abcdefghijk\",6,5,\"*\")", "abcde*k")]
+    [InlineData("=REPLACE(\"2009\",3,2,\"10\")", "2010")]
+    [InlineData("=REPLACE(\"123456\",1,3,\"@\")", "@456")]
+    [InlineData("=SEARCH(\"\"\"\",\"The \"\"boss\"\" is here.\")", "5")]
+    [InlineData("=MID(\"The \"\"boss\"\" is here.\",SEARCH(\"\"\"\",\"The \"\"boss\"\" is here.\")+1,SEARCH(\"\"\"\",\"The \"\"boss\"\" is here.\",SEARCH(\"\"\"\",\"The \"\"boss\"\" is here.\")+1)-SEARCH(\"\"\"\",\"The \"\"boss\"\" is here.\")-1)", "boss")]
+    [InlineData("=REPLACE(2009,3,2,10)", "2010")]
+    [InlineData("=SEARCH(\"b?d\",\"abd\")", "#VALUE!")]
+    [InlineData("=SEARCH(\"b?d\",\"aBcD\")", "2")]
+    [InlineData("=SEARCH(\"a*d\",\"xAbcD\")", "2")]
+    [InlineData("=SEARCH(\"*\",\"abc\")", "1")]
+    [InlineData("=SEARCH(\"~?\",\"why? not\")", "4")]
+    [InlineData("=SEARCH(\"~*\",\"2*3\")", "2")]
+    [InlineData("=SEARCH(\"?\",\"abc\",3)", "3")]
+    [InlineData("=SEARCH(\".\",\"a.b\")", "2")]
+    [InlineData("=SEARCH(\"x\",\"abc\")", "#VALUE!")]
+    [InlineData("=SEARCH(\"a\",\"abc\",0)", "#VALUE!")]
+    [InlineData("=SEARCH(\"a\",\"abc\",4)", "#VALUE!")]
+    [InlineData("=SEARCH(\"\",\"abc\",2)", "2")]
+    [InlineData("=REPLACE(\"abc\",4,1,\"d\")", "abcd")]
+    [InlineData("=REPLACE(\"abc\",9,0,\"d\")", "abcd")]
+    [InlineData("=REPLACE(\"abc\",2,9,\"X\")", "aX")]
+    [InlineData("=REPLACE(\"abc\",2,0,\"X\")", "aXbc")]
+    [InlineData("=REPLACE(\"abc\",0,1,\"X\")", "#VALUE!")]
+    [InlineData("=REPLACE(\"abc\",1,-1,\"X\")", "#VALUE!")]
+    [InlineData("=REPLACE(\"abc\",1.9,1.9,\"X\")", "Xbc")]
+    [InlineData("=REPLACE(1/0,1,1,\"X\")", "#DIV/0!")]
+    public void Search_and_replace(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula));
+    }
+
     [Theory]
     [InlineData("=VLOOKUP(20,A1:B4,2,FALSE)", "twenty")]
     [InlineData("=VLOOKUP(25,A1:B4,2,FALSE)", "#N/A")]
