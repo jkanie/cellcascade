@@ -15,6 +15,7 @@ public static class Functions
         ["AVERAGE"] = (1, Many),
         ["MIN"] = (1, Many),
         ["MAX"] = (1, Many),
+        ["PRODUCT"] = (1, Many),
         ["COUNT"] = (1, Many),
         ["COUNTA"] = (1, Many),
         ["AND"] = (1, Many),
@@ -27,6 +28,7 @@ public static class Functions
         ["ROUNDUP"] = (2, 2),
         ["ROUNDDOWN"] = (2, 2),
         ["INT"] = (1, 1),
+        ["SIGN"] = (1, 1),
         ["MOD"] = (2, 2),
         ["CONCAT"] = (1, Many),
         ["LEN"] = (1, 1),
@@ -70,6 +72,7 @@ public static class Functions
             "AVERAGE" => Aggregate(args, source, values => values.Count == 0 ? double.NaN : values.Average(), emptyIsDivideByZero: true),
             "MIN" => Aggregate(args, source, values => values.Count == 0 ? 0 : values.Min()),
             "MAX" => Aggregate(args, source, values => values.Count == 0 ? 0 : values.Max()),
+            "PRODUCT" => Aggregate(args, source, values => values.Count == 0 ? 0 : values.Aggregate(1.0, (product, value) => product * value)),
             "COUNT" => Count(args, source),
             "COUNTA" => CountA(args, source),
             "AND" => Logical(args, source, all: true),
@@ -82,6 +85,7 @@ public static class Functions
             "ROUNDUP" => Round(args, source, Rounding.AwayFromZero),
             "ROUNDDOWN" => Round(args, source, Rounding.TowardZero),
             "INT" => NumberFunction(args[0], source, Math.Floor),
+            "SIGN" => NumberFunction(args[0], source, number => Math.Sign(number)),
             "MOD" => Mod(args, source),
             "CONCAT" => Concat(args, source),
             "LEN" => TextFunction(args[0], source, text => CellValue.Of(text.Length)),
@@ -111,7 +115,7 @@ public static class Functions
     };
 
     /// <summary>
-    /// SUM, AVERAGE, MIN, MAX. In a range or a cell reference, only numbers count. An error stops the sum.
+    /// SUM, AVERAGE, MIN, MAX, PRODUCT. In a range or a cell reference, only numbers count. An error stops the sum.
     /// A value typed straight into the call is turned into a number, so SUM("3", TRUE) is 4.
     /// </summary>
     private static CellValue Aggregate(IReadOnlyList<Expr> args, IValueSource source, Func<List<double>, double> combine, bool emptyIsDivideByZero = false)

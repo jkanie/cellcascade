@@ -1,6 +1,6 @@
 # Roadmap
 
-Planned work after the seed, with an hour estimate per item. The total is 22.5 hours.
+Planned work after the seed, with an hour estimate per item. The total is 30.5 hours.
 
 ## 1. Ranges as 1 dependency, 3 hours
 
@@ -47,6 +47,31 @@ Planned work after the seed, with an hour estimate per item. The total is 22.5 h
 - What: an undo list of cell changes in the page (Ctrl+Z, Ctrl+Y), each step sent back to the API as an ordinary cell change, such that the cascade follows.
 - Why: a cell written by mistake can only be fixed by typing its old content again today.
 
+## 10. Named ranges, 2 hours
+
+- What: define a name for a cell or a range (such as `Rates` for `B2:B9`) and use the name in formulas. When a name moves to another range, every cell that reads it re-calculates.
+- Why: named ranges make a formula readable (`=SUM(Rates)`), and a sheet that moves a name must re-calculate every cell that reads it.
+
+## 11. CSV import and export of a sheet, 1.5 hours
+
+- What: up-load a CSV file into a sheet from a given cell, and down-load a sheet as CSV with either the values or the formulas.
+- Why: CSV is how most data reaches a sheet. Today every cell has to be sent through the API 1 by 1.
+
+## 12. More text functions, 1.5 hours
+
+- What: EXACT, TEXTJOIN, VALUE, CHAR, CODE, each checked against Microsoft's documented examples.
+- Why: these round out the text functions that the sheet already has (FIND, SEARCH, SUBSTITUTE, REPLACE, PROPER, REPT), so text cleaning needs no work-around.
+
+## 13. Information functions, 1.5 hours
+
+- What: ISERROR, ISNUMBER, ISTEXT, ISBLANK, NA, with Excel's results for errors and empty cells, checked against Microsoft's documented examples.
+- Why: IFERROR catches every error the same way. These let a formula test for 1 kind of value or error, as Excel sheets often do.
+
+## 14. OpenAPI description of the API, 1.5 hours
+
+- What: a generated OpenAPI document for every route, served by the app and checked in CI against the routes.
+- Why: a client in another language can then be generated, and the routes have 1 written contract.
+
 ## Total
 
-22.5 hours.
+30.5 hours.

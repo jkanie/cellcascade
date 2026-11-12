@@ -243,6 +243,30 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, Table));
     }
 
+    // The 1st 3 rows are Microsoft's examples for PRODUCT, with 5, 15, 30 in A2:A4, and the next 3 are its examples
+    // for SIGN.
+    [Theory]
+    [InlineData("=PRODUCT(A2:A4)", "2250")]
+    [InlineData("=PRODUCT(A2:A4, 2)", "4500")]
+    [InlineData("=A2*A3*A4", "2250")]
+    [InlineData("=SIGN(10)", "1")]
+    [InlineData("=SIGN(4-4)", "0")]
+    [InlineData("=SIGN(-0.00001)", "-1")]
+    [InlineData("=PRODUCT(A1:A6)", "2250")]
+    [InlineData("=PRODUCT(B1:B3)", "0")]
+    [InlineData("=PRODUCT(\"3\",TRUE,2)", "6")]
+    [InlineData("=PRODUCT(A2,0)", "0")]
+    [InlineData("=PRODUCT(A2:A4,C1)", "#DIV/0!")]
+    [InlineData("=PRODUCT(\"x\")", "#VALUE!")]
+    [InlineData("=SIGN(A2)", "1")]
+    [InlineData("=SIGN(\"-2\")", "-1")]
+    [InlineData("=SIGN(A5)", "#VALUE!")]
+    [InlineData("=SIGN(C1)", "#DIV/0!")]
+    public void Product_and_sign(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A1", "Data"), ("A2", "5"), ("A3", "15"), ("A4", "30"), ("A5", "x"), ("A6", "TRUE"), ("C1", "=1/0")));
+    }
+
     [Fact]
     public void Function_names_ignore_case()
     {
