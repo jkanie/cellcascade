@@ -199,6 +199,32 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula));
     }
 
+    // The 1st 5 rows are Microsoft's examples for PROPER and REPT.
+    [Theory]
+    [InlineData("=PROPER(\"this is a TITLE\")", "This Is A Title")]
+    [InlineData("=PROPER(\"2-way street\")", "2-Way Street")]
+    [InlineData("=PROPER(\"76BudGet\")", "76Budget")]
+    [InlineData("=REPT(\"*-\",3)", "*-*-*-")]
+    [InlineData("=REPT(\"-\",10)", "----------")]
+    [InlineData("=PROPER(\"o'neil mcDONALD\")", "O'Neil Mcdonald")]
+    [InlineData("=PROPER(\"\u00e9cole \u00c9T\u00c9\")", "\u00c9cole \u00c9t\u00e9")]
+    [InlineData("=PROPER(\"\")", "")]
+    [InlineData("=PROPER(123)", "123")]
+    [InlineData("=PROPER(1/0)", "#DIV/0!")]
+    [InlineData("=REPT(\"ab\",0)", "")]
+    [InlineData("=REPT(\"ab\",2.9)", "abab")]
+    [InlineData("=REPT(\"ab\",-1)", "#VALUE!")]
+    [InlineData("=REPT(\"\",100000)", "")]
+    [InlineData("=LEN(REPT(\"a\",32767))", "32767")]
+    [InlineData("=REPT(\"a\",32768)", "#VALUE!")]
+    [InlineData("=REPT(\"ab\",16384)", "#VALUE!")]
+    [InlineData("=REPT(1,3)", "111")]
+    [InlineData("=REPT(\"a\",1/0)", "#DIV/0!")]
+    public void Proper_and_rept(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula));
+    }
+
     [Theory]
     [InlineData("=VLOOKUP(20,A1:B4,2,FALSE)", "twenty")]
     [InlineData("=VLOOKUP(25,A1:B4,2,FALSE)", "#N/A")]

@@ -40,6 +40,8 @@ public static class Functions
         ["SUBSTITUTE"] = (3, 4),
         ["SEARCH"] = (2, 3),
         ["REPLACE"] = (4, 4),
+        ["PROPER"] = (1, 1),
+        ["REPT"] = (2, 2),
         ["VLOOKUP"] = (3, 4),
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
@@ -93,6 +95,8 @@ public static class Functions
             "SUBSTITUTE" => Substitute(args, source),
             "SEARCH" => Search(args, source),
             "REPLACE" => Replace(args, source),
+            "PROPER" => TextFunction(args[0], source, text => CellValue.Of(Proper(text))),
+            "REPT" => Rept(args, source),
             "VLOOKUP" => VLookup(args, source),
             _ => CellValue.Error(ErrorKind.Name),
         };
@@ -391,6 +395,54 @@ public static class Functions
             pattern.ToString(),
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline,
             TimeSpan.FromSeconds(1));
+    }
+
+    /// <summary>
+    /// PROPER(text): as Microsoft documents it, a letter that follows a character other than a letter (or starts the
+    /// text) becomes upper case, and every other letter becomes lower case.
+    /// </summary>
+    internal static string Proper(string text)
+    {
+        var chars = text.ToCharArray();
+        var afterLetter = false;
+        for (var i = 0; i < chars.Length; i++)
+        {
+            if (char.IsLetter(chars[i]))
+            {
+                chars[i] = afterLetter ? char.ToLowerInvariant(chars[i]) : char.ToUpperInvariant(chars[i]);
+                afterLetter = true;
+            }
+            else
+            {
+                afterLetter = false;
+            }
+        }
+
+        return new string(chars);
+    }
+
+    /// <summary>The longest text that REPT may give, as Microsoft documents it.</summary>
+    internal const int MaxReptLength = 32767;
+
+    /// <summary>
+    /// REPT(text, number_times) repeats text. As Microsoft documents it, 0 gives "", a fraction is cut toward 0, and a
+    /// result longer than 32,767 characters gives #VALUE!. A negative number_times gives #VALUE! too.
+    /// </summary>
+    private static CellValue Rept(IReadOnlyList<Expr> args, IValueSource source)
+    {
+        if (!Evaluator.TryText(Scalar(args[0], source), out var text, out var error)
+            || !Evaluator.TryNumber(Scalar(args[1], source), out var times, out error))
+        {
+            return error!;
+        }
+
+        times = Math.Truncate(times);
+        if (times < 0 || times * text.Length > MaxReptLength)
+        {
+            return CellValue.Error(ErrorKind.Value);
+        }
+
+        return CellValue.Of(text.Length == 0 ? text : string.Concat(Enumerable.Repeat(text, (int)times)));
     }
 
     /// <summary>
