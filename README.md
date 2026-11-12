@@ -5,7 +5,7 @@ A spreadsheet formula engine for .NET, with an HTTP API and a small grid screen.
 ## What it does
 
 - Reads formulas with Excel's operator order: `=-2^2` is 4 and `=2^3^2` is 64, as in Excel.
-- Supports numbers, text, TRUE and FALSE, cell references (`A1`, `$B$2`), ranges (`A1:C10`). It has 26 functions: ABS, AND, AVERAGE, CONCAT, COUNT, COUNTA, IF, IFERROR, INT, LEFT, LEN, LOWER, MAX, MID, MIN, MOD, NOT, OR, RIGHT, ROUND, ROUNDDOWN, ROUNDUP, SUM, TRIM, UPPER, VLOOKUP.
+- Supports numbers, text, TRUE and FALSE, cell references (`A1`, `$B$2`), ranges (`A1:C10`). It has 28 functions: ABS, AND, AVERAGE, CONCAT, COUNT, COUNTA, FIND, IF, IFERROR, INT, LEFT, LEN, LOWER, MAX, MID, MIN, MOD, NOT, OR, RIGHT, ROUND, ROUNDDOWN, ROUNDUP, SUBSTITUTE, SUM, TRIM, UPPER, VLOOKUP.
 - Keeps a dependency graph of the sheet. A change re-calculates the changed cells' dependents (directly or through other cells), each 1 time. Every other cell stays as it was.
 - Finds circular references with Tarjan's algorithm and marks every cell in a cycle `#CYCLE!`. A cell that reads a cycle gets the error too, unless IFERROR catches it.
 - Gives Excel's error values: `#DIV/0!`, `#VALUE!`, `#REF!`, `#NAME?`, `#NUM!`, `#N/A`.
@@ -102,7 +102,7 @@ Types follow Excel's rules:
 - Comparison puts every number before every text and every text before TRUE and FALSE. Text compares without regard to case.
 - SUM, AVERAGE, MIN, MAX, COUNT skip text and booleans inside ranges and references, but turn a value typed into the call into a number (`=SUM("3",TRUE)` is 4).
 - IF and IFERROR evaluate only the argument that they return.
-- ROUND rounds half away from 0. ROUNDUP rounds away from 0 and ROUNDDOWN toward 0, as in Excel. INT rounds down to the next whole number, so INT(-8.9) is -9. MOD has the sign of the divisor, so MOD(-3,2) is 1. LEFT, RIGHT, MID count characters from 1 and stop at the end of the text. MID with a start past the end gives empty text. TRIM removes the space character 32 only, so a non-breaking space stays. VLOOKUP looks up approximately unless its 4th argument is FALSE.
+- ROUND rounds half away from 0. ROUNDUP rounds away from 0 and ROUNDDOWN toward 0, as in Excel. INT rounds down to the next whole number, so INT(-8.9) is -9. MOD has the sign of the divisor, so MOD(-3,2) is 1. LEFT, RIGHT, MID count characters from 1 and stop at the end of the text. MID with a start past the end gives empty text. TRIM removes the space character 32 only, so a non-breaking space stays. FIND counts case and reads ? and * as plain characters. As Microsoft documents, it gives #VALUE! when the text is not found or when its start is below 1 or past the end. SUBSTITUTE counts case too. With an instance number it changes only that occurrence, and an instance below 1 gives #VALUE!. VLOOKUP looks up approximately unless its 4th argument is FALSE.
 - When both sides of an operator hold errors, the left 1 wins.
 
 Where this engine differs from Excel:

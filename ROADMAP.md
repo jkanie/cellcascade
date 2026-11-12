@@ -1,6 +1,6 @@
 # Roadmap
 
-Planned work after the seed, with an hour estimate per item. The total is 24.5 hours.
+Planned work after the seed, with an hour estimate per item. The total is 23.5 hours.
 
 ## 1. Ranges as 1 dependency, 3 hours
 
@@ -42,10 +42,10 @@ Planned work after the seed, with an hour estimate per item. The total is 24.5 h
 - What: a change log, a tag, the engine as a NuGet package, a Docker image of the API.
 - Why: another .NET app can then use the engine with 1 package reference. The API can also run with 1 command.
 
-## 9. Find and replace inside text, 2 hours
+## 9. Search and replace by position inside text, 1 hour
 
-- What: FIND (case-sensitive), SEARCH (case-insensitive, with ? and * as wild-cards), SUBSTITUTE (with its optional instance number), REPLACE, each with Excel's results for a start before 1 or past the end, checked against Microsoft's documented examples.
-- Why: LEFT, RIGHT, MID take text apart only at fixed places today. A formula cannot yet find where a word starts or swap 1 word for another.
+- What: SEARCH (case-insensitive, with ? and * as wild-cards, and ~ before either to match it as a character), REPLACE (by start and length), each with Excel's results for a start before 1 or past the end, checked against Microsoft's documented examples.
+- Why: FIND counts case and has no wild-cards, so a formula cannot yet find a word whatever its case. SUBSTITUTE replaces by content only, so a formula cannot yet overwrite a fixed span such as the middle digits of an account number.
 
 ## 10. Undo and redo in the grid, 2 hours
 
@@ -54,4 +54,4 @@ Planned work after the seed, with an hour estimate per item. The total is 24.5 h
 
 ## Total
 
-24.5 hours.
+23.5 hours.

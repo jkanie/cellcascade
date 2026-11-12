@@ -34,6 +34,8 @@ public static class Functions
         ["RIGHT"] = (1, 2),
         ["MID"] = (3, 3),
         ["TRIM"] = (1, 1),
+        ["FIND"] = (2, 3),
+        ["SUBSTITUTE"] = (3, 4),
         ["VLOOKUP"] = (3, 4),
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
@@ -83,6 +85,8 @@ public static class Functions
             "RIGHT" => Take(args, source, fromEnd: true),
             "MID" => Mid(args, source),
             "TRIM" => TextFunction(args[0], source, text => CellValue.Of(Trim(text))),
+            "FIND" => Find(args, source),
+            "SUBSTITUTE" => Substitute(args, source),
             "VLOOKUP" => VLookup(args, source),
             _ => CellValue.Error(ErrorKind.Name),
         };
@@ -291,6 +295,85 @@ public static class Functions
 
         var from = (int)start - 1;
         return CellValue.Of(text.Substring(from, (int)Math.Min(count, text.Length - from)));
+    }
+
+    /// <summary>
+    /// FIND(find_text, within_text, start_num) gives the position (from 1) of the 1st find_text in within_text at or
+    /// after start_num (1 when it is left out). Case counts, and ? and * are plain characters. As Microsoft
+    /// documents, a start_num that is not above 0 or is past the length of within_text gives #VALUE!, an empty
+    /// find_text matches at start_num, and text that is not found gives #VALUE!. A fraction is cut toward 0.
+    /// </summary>
+    private static CellValue Find(IReadOnlyList<Expr> args, IValueSource source)
+    {
+        if (!Evaluator.TryText(Scalar(args[0], source), out var find, out var error)
+            || !Evaluator.TryText(Scalar(args[1], source), out var within, out error))
+        {
+            return error!;
+        }
+
+        var start = 1.0;
+        if (args.Count == 3 && !Evaluator.TryNumber(Scalar(args[2], source), out start, out error))
+        {
+            return error!;
+        }
+
+        start = Math.Truncate(start);
+        if (start < 1 || start > within.Length)
+        {
+            return CellValue.Error(ErrorKind.Value);
+        }
+
+        var at = within.IndexOf(find, (int)start - 1, StringComparison.Ordinal);
+        return at < 0 ? CellValue.Error(ErrorKind.Value) : CellValue.Of(at + 1);
+    }
+
+    /// <summary>
+    /// SUBSTITUTE(text, old_text, new_text, instance_num) puts new_text in place of every old_text, or only of the
+    /// instance_num-th 1 (counted from 1, each match after the end of the last) when it is given. Case counts. An empty old_text, or an
+    /// instance that is not there, leaves the text as it is. An instance_num below 1 gives #VALUE!, and a fraction is
+    /// cut toward 0.
+    /// </summary>
+    private static CellValue Substitute(IReadOnlyList<Expr> args, IValueSource source)
+    {
+        if (!Evaluator.TryText(Scalar(args[0], source), out var text, out var error)
+            || !Evaluator.TryText(Scalar(args[1], source), out var old, out error)
+            || !Evaluator.TryText(Scalar(args[2], source), out var replacement, out error))
+        {
+            return error!;
+        }
+
+        if (args.Count < 4)
+        {
+            return CellValue.Of(old.Length == 0 ? text : text.Replace(old, replacement, StringComparison.Ordinal));
+        }
+
+        if (!Evaluator.TryNumber(Scalar(args[3], source), out var instance, out error))
+        {
+            return error!;
+        }
+
+        instance = Math.Truncate(instance);
+        if (instance < 1)
+        {
+            return CellValue.Error(ErrorKind.Value);
+        }
+
+        if (old.Length == 0)
+        {
+            return CellValue.Of(text);
+        }
+
+        var at = -old.Length;
+        for (var seen = 0; seen < instance; seen++)
+        {
+            at = text.IndexOf(old, at + old.Length, StringComparison.Ordinal);
+            if (at < 0)
+            {
+                return CellValue.Of(text);
+            }
+        }
+
+        return CellValue.Of(string.Concat(text.AsSpan(0, at), replacement, text.AsSpan(at + old.Length)));
     }
 
     /// <summary>TRIM drops the spaces (character 32 only) at both ends and leaves 1 space between words.</summary>

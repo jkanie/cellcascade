@@ -126,6 +126,41 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula));
     }
 
+    // The 1st 7 rows are Microsoft's examples for FIND and SUBSTITUTE.
+    [Theory]
+    [InlineData("=FIND(\"M\",\"Miriam McGovern\")", "1")]
+    [InlineData("=FIND(\"m\",\"Miriam McGovern\")", "6")]
+    [InlineData("=FIND(\"M\",\"Miriam McGovern\",3)", "8")]
+    [InlineData("=MID(\"Ceramic Insulators #124-TD45-87\",1,FIND(\" #\",\"Ceramic Insulators #124-TD45-87\",1)-1)", "Ceramic Insulators")]
+    [InlineData("=SUBSTITUTE(\"Sales Data\",\"Sales\",\"Cost\")", "Cost Data")]
+    [InlineData("=SUBSTITUTE(\"Quarter 1, 2008\",\"1\",\"2\",1)", "Quarter 2, 2008")]
+    [InlineData("=SUBSTITUTE(\"Quarter 1, 2011\",\"1\",\"2\",3)", "Quarter 1, 2012")]
+    [InlineData("=FIND(\"\",\"abc\")", "1")]
+    [InlineData("=FIND(\"\",\"abc\",3)", "3")]
+    [InlineData("=FIND(\"x\",\"abc\")", "#VALUE!")]
+    [InlineData("=FIND(\"a\",\"abc\",0)", "#VALUE!")]
+    [InlineData("=FIND(\"a\",\"abc\",4)", "#VALUE!")]
+    [InlineData("=FIND(\"a\",\"abca\",2)", "4")]
+    [InlineData("=FIND(\"c\",\"abc\",2.9)", "3")]
+    [InlineData("=FIND(\"?\",\"a?b*\")", "2")]
+    [InlineData("=FIND(\"*\",\"a?b*\")", "4")]
+    [InlineData("=FIND(1/0,\"abc\")", "#DIV/0!")]
+    [InlineData("=FIND(5,2025)", "4")]
+    [InlineData("=SUBSTITUTE(\"aaaa\",\"aa\",\"b\")", "bb")]
+    [InlineData("=SUBSTITUTE(\"aaa\",\"aa\",\"b\",2)", "aaa")]
+    [InlineData("=SUBSTITUTE(\"a-b-c\",\"-\",\"\",2)", "a-bc")]
+    [InlineData("=SUBSTITUTE(\"a-b-c\",\"-\",\"+\",2.7)", "a-b+c")]
+    [InlineData("=SUBSTITUTE(\"abc\",\"\",\"x\")", "abc")]
+    [InlineData("=SUBSTITUTE(\"abc\",\"\",\"x\",1)", "abc")]
+    [InlineData("=SUBSTITUTE(\"aBc\",\"b\",\"x\")", "aBc")]
+    [InlineData("=SUBSTITUTE(\"abc\",\"b\",\"x\",0)", "#VALUE!")]
+    [InlineData("=SUBSTITUTE(\"abc\",\"b\",\"x\",1/0)", "#DIV/0!")]
+    [InlineData("=SUBSTITUTE(2008,\"0\",\"9\")", "2998")]
+    public void Find_and_substitute(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula));
+    }
+
     [Theory]
     [InlineData("=VLOOKUP(20,A1:B4,2,FALSE)", "twenty")]
     [InlineData("=VLOOKUP(25,A1:B4,2,FALSE)", "#N/A")]
