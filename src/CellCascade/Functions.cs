@@ -29,6 +29,8 @@ public static class Functions
         ["ROUNDDOWN"] = (2, 2),
         ["INT"] = (1, 1),
         ["SIGN"] = (1, 1),
+        ["SQRT"] = (1, 1),
+        ["POWER"] = (2, 2),
         ["MOD"] = (2, 2),
         ["CONCAT"] = (1, Many),
         ["LEN"] = (1, 1),
@@ -86,6 +88,9 @@ public static class Functions
             "ROUNDDOWN" => Round(args, source, Rounding.TowardZero),
             "INT" => NumberFunction(args[0], source, Math.Floor),
             "SIGN" => NumberFunction(args[0], source, number => Math.Sign(number)),
+            // Math.Sqrt gives NaN below 0, which CellValue.Of turns into #NUM!, as SQRT does in Excel.
+            "SQRT" => NumberFunction(args[0], source, Math.Sqrt),
+            "POWER" => PowerFunction(args, source),
             "MOD" => Mod(args, source),
             "CONCAT" => Concat(args, source),
             "LEN" => TextFunction(args[0], source, text => CellValue.Of(text.Length)),
@@ -584,6 +589,17 @@ public static class Functions
     }
 
     /// <summary>MOD(number, divisor) has the sign of the divisor, as in Excel, so MOD(-3, 2) is 1. A divisor of 0 gives #DIV/0!.</summary>
+    /// <summary>POWER(number, power) is the same as number^power.</summary>
+    private static CellValue PowerFunction(IReadOnlyList<Expr> args, IValueSource source)
+    {
+        if (!Evaluator.TryNumber(Scalar(args[0], source), out var number, out var error))
+        {
+            return error!;
+        }
+
+        return Evaluator.TryNumber(Scalar(args[1], source), out var power, out error) ? Evaluator.Power(number, power) : error!;
+    }
+
     private static CellValue Mod(IReadOnlyList<Expr> args, IValueSource source)
     {
         if (!Evaluator.TryNumber(Scalar(args[0], source), out var number, out var error))

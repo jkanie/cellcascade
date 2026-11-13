@@ -267,6 +267,28 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A1", "Data"), ("A2", "5"), ("A3", "15"), ("A4", "30"), ("A5", "x"), ("A6", "TRUE"), ("C1", "=1/0")));
     }
 
+    // The 1st 3 rows are Microsoft's examples for SQRT, with -16 in A2, and the next 3 are its examples for POWER
+    // (its results 2401077.222 and 5.656854249 are shown to 3 and 9 decimals, so the test rounds the same way).
+    [Theory]
+    [InlineData("=SQRT(16)", "4")]
+    [InlineData("=SQRT(A2)", "#NUM!")]
+    [InlineData("=SQRT(ABS(A2))", "4")]
+    [InlineData("=POWER(5,2)", "25")]
+    [InlineData("=ROUND(POWER(98.6,3.2),3)", "2401077.222")]
+    [InlineData("=ROUND(POWER(4,5/4),9)", "5.656854249")]
+    [InlineData("=POWER(A2,0.5)", "#NUM!")]
+    [InlineData("=POWER(0,0)", "#NUM!")]
+    [InlineData("=POWER(0,-1)", "#DIV/0!")]
+    [InlineData("=POWER(2,10)=2^10", "TRUE")]
+    [InlineData("=POWER(\"2\",\"3\")", "8")]
+    [InlineData("=SQRT(0)", "0")]
+    [InlineData("=SQRT(A3)", "#VALUE!")]
+    [InlineData("=POWER(C1,2)", "#DIV/0!")]
+    public void Sqrt_and_power(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A2", "-16"), ("A3", "x"), ("C1", "=1/0")));
+    }
+
     [Fact]
     public void Function_names_ignore_case()
     {

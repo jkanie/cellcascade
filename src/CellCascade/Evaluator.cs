@@ -226,7 +226,8 @@ public static class Evaluator
         };
     }
 
-    private static CellValue Power(double x, double y)
+    /// <summary>The ^ operator and POWER: 0^0 is #NUM! and 0 to a power below 0 is #DIV/0!, as in Excel.</summary>
+    internal static CellValue Power(double x, double y)
     {
         if (x == 0 && y == 0)
         {
