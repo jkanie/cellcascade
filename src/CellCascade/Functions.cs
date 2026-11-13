@@ -31,6 +31,8 @@ public static class Functions
         ["SIGN"] = (1, 1),
         ["SQRT"] = (1, 1),
         ["POWER"] = (2, 2),
+        ["EXP"] = (1, 1),
+        ["LN"] = (1, 1),
         ["MOD"] = (2, 2),
         ["CONCAT"] = (1, Many),
         ["LEN"] = (1, 1),
@@ -91,6 +93,9 @@ public static class Functions
             // Math.Sqrt gives NaN below 0, which CellValue.Of turns into #NUM!, as SQRT does in Excel.
             "SQRT" => NumberFunction(args[0], source, Math.Sqrt),
             "POWER" => PowerFunction(args, source),
+            // A result that overflows (EXP(1000)) or a log of 0 or below is not finite, and CellValue.Of makes it #NUM!.
+            "EXP" => NumberFunction(args[0], source, Math.Exp),
+            "LN" => NumberFunction(args[0], source, Math.Log),
             "MOD" => Mod(args, source),
             "CONCAT" => Concat(args, source),
             "LEN" => TextFunction(args[0], source, text => CellValue.Of(text.Length)),

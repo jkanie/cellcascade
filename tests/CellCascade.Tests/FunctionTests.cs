@@ -289,6 +289,26 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A2", "-16"), ("A3", "x"), ("C1", "=1/0")));
     }
 
+    // The 1st 3 rows are Microsoft's examples for LN and the next 2 its examples for EXP. Microsoft shows the results
+    // rounded (LN(2.7182818) as 1, EXP(1) as 2.71828183), so the test rounds to the same decimals.
+    [Theory]
+    [InlineData("=ROUND(LN(86),7)", "4.4543473")]
+    [InlineData("=ROUND(LN(2.7182818),7)", "1")]
+    [InlineData("=LN(EXP(3))", "3")]
+    [InlineData("=ROUND(EXP(1),8)", "2.71828183")]
+    [InlineData("=ROUND(EXP(2),7)", "7.3890561")]
+    [InlineData("=EXP(0)", "1")]
+    [InlineData("=LN(1)", "0")]
+    [InlineData("=LN(0)", "#NUM!")]
+    [InlineData("=LN(A2)", "#NUM!")]
+    [InlineData("=EXP(1000)", "#NUM!")]
+    [InlineData("=LN(A3)", "#VALUE!")]
+    [InlineData("=EXP(C1)", "#DIV/0!")]
+    public void Exp_and_ln(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A2", "-1"), ("A3", "x"), ("C1", "=1/0")));
+    }
+
     [Fact]
     public void Function_names_ignore_case()
     {
