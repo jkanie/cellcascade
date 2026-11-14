@@ -33,6 +33,7 @@ public static class Functions
         ["POWER"] = (2, 2),
         ["EXP"] = (1, 1),
         ["LN"] = (1, 1),
+        ["LOG"] = (1, 2),
         ["LOG10"] = (1, 1),
         ["PI"] = (0, 0),
         ["MOD"] = (2, 2),
@@ -100,6 +101,7 @@ public static class Functions
             "LN" => NumberFunction(args[0], source, Math.Log),
             // As with LN, a log of 0 or below is not finite and becomes #NUM!.
             "LOG10" => NumberFunction(args[0], source, Math.Log10),
+            "LOG" => Log(args, source),
             "PI" => CellValue.Of(Math.PI),
             "MOD" => Mod(args, source),
             "CONCAT" => Concat(args, source),
@@ -608,6 +610,35 @@ public static class Functions
         }
 
         return Evaluator.TryNumber(Scalar(args[1], source), out var power, out error) ? Evaluator.Power(number, power) : error!;
+    }
+
+    /// <summary>
+    /// LOG(number, base) with base 10 when it is left out, as Microsoft documents. A number or base of 0 or below is
+    /// #NUM!, as with LN. A base of 1 divides by LN(1), which is 0, so it is #DIV/0!.
+    /// </summary>
+    private static CellValue Log(IReadOnlyList<Expr> args, IValueSource source)
+    {
+        if (!Evaluator.TryNumber(Scalar(args[0], source), out var number, out var error))
+        {
+            return error!;
+        }
+
+        if (args.Count == 1)
+        {
+            return CellValue.Of(Math.Log10(number));
+        }
+
+        if (!Evaluator.TryNumber(Scalar(args[1], source), out var logBase, out error))
+        {
+            return error!;
+        }
+
+        if (number <= 0 || logBase <= 0)
+        {
+            return CellValue.Error(ErrorKind.Number);
+        }
+
+        return logBase == 1 ? CellValue.Error(ErrorKind.DivideByZero) : CellValue.Of(Math.Log(number) / Math.Log(logBase));
     }
 
     private static CellValue Mod(IReadOnlyList<Expr> args, IValueSource source)

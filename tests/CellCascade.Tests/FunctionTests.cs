@@ -332,6 +332,35 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A2", "-1"), ("A3", "3"), ("A4", "x"), ("C1", "=1/0"), ("LOG10", "100")));
     }
 
+    // Microsoft's 3 LOG examples, the 3rd rounded to the 7 decimals Microsoft shows.
+    [Theory]
+    [InlineData("=LOG(10)", "1")]
+    [InlineData("=LOG(8, 2)", "3")]
+    [InlineData("=ROUND(LOG(86, 2.7182818),7)", "4.4543473")]
+    [InlineData("=LOG(1000)", "3")]
+    [InlineData("=LOG(0.5, 2)", "-1")]
+    [InlineData("=LOG(A3, A3)", "1")]
+    [InlineData("=LOG(0)", "#NUM!")]
+    [InlineData("=LOG(8, 0)", "#NUM!")]
+    [InlineData("=LOG(8, A2)", "#NUM!")]
+    [InlineData("=LOG(8, 1)", "#DIV/0!")]
+    [InlineData("=LOG(A4, 2)", "#VALUE!")]
+    [InlineData("=LOG(8, A4)", "#VALUE!")]
+    [InlineData("=LOG(C1, 2)", "#DIV/0!")]
+    public void Log_with_and_without_a_base(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A2", "-1"), ("A3", "3"), ("A4", "x"), ("C1", "=1/0")));
+    }
+
+    [Theory]
+    [InlineData("LOG()", "LOG at position 1 takes 1 to 2 arguments, not 0.")]
+    [InlineData("LOG(1,2,3)", "LOG at position 1 takes 1 to 2 arguments, not 3.")]
+    public void Log_refuses_the_wrong_number_of_arguments(string formula, string message)
+    {
+        var error = Assert.Throws<FormulaException>(() => Parser.Parse(formula));
+        Assert.Equal(message, error.Message);
+    }
+
     [Theory]
     [InlineData("PI(1)", "PI at position 1 takes 0 arguments, not 1.")]
     [InlineData("LOG10()", "LOG10 at position 1 takes 1 arguments, not 0.")]
