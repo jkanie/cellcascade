@@ -33,6 +33,8 @@ public static class Functions
         ["POWER"] = (2, 2),
         ["EXP"] = (1, 1),
         ["LN"] = (1, 1),
+        ["LOG10"] = (1, 1),
+        ["PI"] = (0, 0),
         ["MOD"] = (2, 2),
         ["CONCAT"] = (1, Many),
         ["LEN"] = (1, 1),
@@ -96,6 +98,9 @@ public static class Functions
             // A result that overflows (EXP(1000)) or a log of 0 or below is not finite, and CellValue.Of makes it #NUM!.
             "EXP" => NumberFunction(args[0], source, Math.Exp),
             "LN" => NumberFunction(args[0], source, Math.Log),
+            // As with LN, a log of 0 or below is not finite and becomes #NUM!.
+            "LOG10" => NumberFunction(args[0], source, Math.Log10),
+            "PI" => CellValue.Of(Math.PI),
             "MOD" => Mod(args, source),
             "CONCAT" => Concat(args, source),
             "LEN" => TextFunction(args[0], source, text => CellValue.Of(text.Length)),

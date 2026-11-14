@@ -63,7 +63,10 @@ internal static class Lexer
                 }
 
                 var word = source[start..i].ToString();
-                if (CellAddress.TryParse(word, out _))
+
+                // LOG10 is also a cell address, so a word right before "(" is read as a function name, as Excel does.
+                var calls = i < source.Length && source[i] == '(';
+                if (!calls && CellAddress.TryParse(word, out _))
                 {
                     tokens.Add(new Token(TokenKind.Cell, word, start));
                 }

@@ -309,6 +309,38 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A2", "-1"), ("A3", "x"), ("C1", "=1/0")));
     }
 
+    // Microsoft's 4 LOG10 examples and its 3 PI examples, rounded to the decimals Microsoft shows (PI() as 3.141592654).
+    // The last row reads cell LOG10 inside a LOG10 call: the name is a function only right before "(".
+    [Theory]
+    [InlineData("=ROUND(LOG10(86),4)", "1.9345")]
+    [InlineData("=LOG10(10)", "1")]
+    [InlineData("=LOG10(100000)", "5")]
+    [InlineData("=LOG10(10^5)", "5")]
+    [InlineData("=ROUND(PI(),9)", "3.141592654")]
+    [InlineData("=ROUND(PI()/2,9)", "1.570796327")]
+    [InlineData("=ROUND(PI()*(A3^2),8)", "28.27433388")]
+    [InlineData("=PI()", "3.14159265358979")]
+    [InlineData("=LOG10(1)", "0")]
+    [InlineData("=LOG10(0.001)", "-3")]
+    [InlineData("=LOG10(0)", "#NUM!")]
+    [InlineData("=LOG10(A2)", "#NUM!")]
+    [InlineData("=LOG10(A4)", "#VALUE!")]
+    [InlineData("=LOG10(C1)", "#DIV/0!")]
+    [InlineData("=LOG10(LOG10)", "2")]
+    public void Log10_and_pi(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A2", "-1"), ("A3", "3"), ("A4", "x"), ("C1", "=1/0"), ("LOG10", "100")));
+    }
+
+    [Theory]
+    [InlineData("PI(1)", "PI at position 1 takes 0 arguments, not 1.")]
+    [InlineData("LOG10()", "LOG10 at position 1 takes 1 arguments, not 0.")]
+    public void Pi_and_log10_refuse_the_wrong_number_of_arguments(string formula, string message)
+    {
+        var error = Assert.Throws<FormulaException>(() => Parser.Parse(formula));
+        Assert.Equal(message, error.Message);
+    }
+
     [Fact]
     public void Function_names_ignore_case()
     {
