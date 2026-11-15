@@ -28,6 +28,7 @@ public static class Functions
         ["ROUNDUP"] = (2, 2),
         ["ROUNDDOWN"] = (2, 2),
         ["INT"] = (1, 1),
+        ["TRUNC"] = (1, 2),
         ["SIGN"] = (1, 1),
         ["SQRT"] = (1, 1),
         ["POWER"] = (2, 2),
@@ -92,6 +93,8 @@ public static class Functions
             "ROUNDUP" => Round(args, source, Rounding.AwayFromZero),
             "ROUNDDOWN" => Round(args, source, Rounding.TowardZero),
             "INT" => NumberFunction(args[0], source, Math.Floor),
+            // TRUNC drops digits toward 0, so with num_digits it is ROUNDDOWN. Without it, num_digits is 0.
+            "TRUNC" => args.Count == 1 ? NumberFunction(args[0], source, Math.Truncate) : Round(args, source, Rounding.TowardZero),
             "SIGN" => NumberFunction(args[0], source, number => Math.Sign(number)),
             // Math.Sqrt gives NaN below 0, which CellValue.Of turns into #NUM!, as SQRT does in Excel.
             "SQRT" => NumberFunction(args[0], source, Math.Sqrt),

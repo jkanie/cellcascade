@@ -332,6 +332,34 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A2", "-1"), ("A3", "3"), ("A4", "x"), ("C1", "=1/0"), ("LOG10", "100")));
     }
 
+    // Microsoft's 3 TRUNC examples, then its remark that TRUNC(-4.3) is -4 where INT(-4.3) is -5.
+    [Theory]
+    [InlineData("=TRUNC(8.9)", "8")]
+    [InlineData("=TRUNC(-8.9)", "-8")]
+    [InlineData("=TRUNC(0.45)", "0")]
+    [InlineData("=TRUNC(-4.3)", "-4")]
+    [InlineData("=INT(-4.3)", "-5")]
+    [InlineData("=TRUNC(3.14159, 2)", "3.14")]
+    [InlineData("=TRUNC(-1.239, 2)", "-1.23")]
+    [InlineData("=TRUNC(1234.5, -2)", "1200")]
+    [InlineData("=TRUNC(A3, 0)", "3")]
+    [InlineData("=TRUNC(A4)", "#VALUE!")]
+    [InlineData("=TRUNC(1.5, A4)", "#VALUE!")]
+    [InlineData("=TRUNC(C1)", "#DIV/0!")]
+    public void Trunc_drops_digits_toward_zero(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A3", "3.99"), ("A4", "x"), ("C1", "=1/0")));
+    }
+
+    [Theory]
+    [InlineData("TRUNC()", "TRUNC at position 1 takes 1 to 2 arguments, not 0.")]
+    [InlineData("TRUNC(1,2,3)", "TRUNC at position 1 takes 1 to 2 arguments, not 3.")]
+    public void Trunc_refuses_the_wrong_number_of_arguments(string formula, string message)
+    {
+        var error = Assert.Throws<FormulaException>(() => Parser.Parse(formula));
+        Assert.Equal(message, error.Message);
+    }
+
     // Microsoft's 3 LOG examples, the 3rd rounded to the 7 decimals Microsoft shows.
     [Theory]
     [InlineData("=LOG(10)", "1")]
