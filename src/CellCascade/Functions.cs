@@ -38,6 +38,7 @@ public static class Functions
         ["LOG10"] = (1, 1),
         ["PI"] = (0, 0),
         ["MOD"] = (2, 2),
+        ["QUOTIENT"] = (2, 2),
         ["CONCAT"] = (1, Many),
         ["LEN"] = (1, 1),
         ["UPPER"] = (1, 1),
@@ -107,6 +108,7 @@ public static class Functions
             "LOG" => Log(args, source),
             "PI" => CellValue.Of(Math.PI),
             "MOD" => Mod(args, source),
+            "QUOTIENT" => Quotient(args, source),
             "CONCAT" => Concat(args, source),
             "LEN" => TextFunction(args[0], source, text => CellValue.Of(text.Length)),
             "UPPER" => TextFunction(args[0], source, text => CellValue.Of(text.ToUpperInvariant())),
@@ -662,6 +664,27 @@ public static class Functions
         }
 
         return CellValue.Of(number - (divisor * Math.Floor(number / divisor)));
+    }
+
+    /// <summary>QUOTIENT(numerator, denominator): the whole part of the division, toward 0, so QUOTIENT(-10,3) is -3.</summary>
+    private static CellValue Quotient(IReadOnlyList<Expr> args, IValueSource source)
+    {
+        if (!Evaluator.TryNumber(Scalar(args[0], source), out var numerator, out var error))
+        {
+            return error!;
+        }
+
+        if (!Evaluator.TryNumber(Scalar(args[1], source), out var denominator, out error))
+        {
+            return error!;
+        }
+
+        if (denominator == 0)
+        {
+            return CellValue.Error(ErrorKind.DivideByZero);
+        }
+
+        return CellValue.Of(Math.Truncate(numerator / denominator));
     }
 
     private static CellValue Concat(IReadOnlyList<Expr> args, IValueSource source)

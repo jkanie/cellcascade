@@ -332,6 +332,33 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A2", "-1"), ("A3", "3"), ("A4", "x"), ("C1", "=1/0"), ("LOG10", "100")));
     }
 
+    // Microsoft's 3 QUOTIENT examples, then the cases around them.
+    [Theory]
+    [InlineData("=QUOTIENT(5, 2)", "2")]
+    [InlineData("=QUOTIENT(4.5, 3.1)", "1")]
+    [InlineData("=QUOTIENT(-10, 3)", "-3")]
+    [InlineData("=QUOTIENT(10, -3)", "-3")]
+    [InlineData("=QUOTIENT(-10, -3)", "3")]
+    [InlineData("=QUOTIENT(2, 5)", "0")]
+    [InlineData("=QUOTIENT(A3, 2)", "3")]
+    [InlineData("=QUOTIENT(A3, 0)", "#DIV/0!")]
+    [InlineData("=QUOTIENT(A4, 2)", "#VALUE!")]
+    [InlineData("=QUOTIENT(2, A4)", "#VALUE!")]
+    [InlineData("=QUOTIENT(C1, 2)", "#DIV/0!")]
+    public void Quotient_keeps_the_whole_part_toward_zero(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A3", "7"), ("A4", "x"), ("C1", "=1/0")));
+    }
+
+    [Theory]
+    [InlineData("QUOTIENT(1)", "QUOTIENT at position 1 takes 2 arguments, not 1.")]
+    [InlineData("QUOTIENT(1,2,3)", "QUOTIENT at position 1 takes 2 arguments, not 3.")]
+    public void Quotient_refuses_the_wrong_number_of_arguments(string formula, string message)
+    {
+        var error = Assert.Throws<FormulaException>(() => Parser.Parse(formula));
+        Assert.Equal(message, error.Message);
+    }
+
     // Microsoft's 3 TRUNC examples, then its remark that TRUNC(-4.3) is -4 where INT(-4.3) is -5.
     [Theory]
     [InlineData("=TRUNC(8.9)", "8")]
