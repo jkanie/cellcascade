@@ -332,6 +332,40 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A2", "-1"), ("A3", "3"), ("A4", "x"), ("C1", "=1/0"), ("LOG10", "100")));
     }
 
+    // Microsoft's 4 EVEN examples and 5 ODD examples, then the cases around them.
+    [Theory]
+    [InlineData("=EVEN(1.5)", "2")]
+    [InlineData("=EVEN(3)", "4")]
+    [InlineData("=EVEN(2)", "2")]
+    [InlineData("=EVEN(-1)", "-2")]
+    [InlineData("=EVEN(0)", "0")]
+    [InlineData("=EVEN(-2.5)", "-4")]
+    [InlineData("=EVEN(A3)", "8")]
+    [InlineData("=EVEN(A4)", "#VALUE!")]
+    [InlineData("=EVEN(C1)", "#DIV/0!")]
+    [InlineData("=ODD(1.5)", "3")]
+    [InlineData("=ODD(3)", "3")]
+    [InlineData("=ODD(2)", "3")]
+    [InlineData("=ODD(-1)", "-1")]
+    [InlineData("=ODD(-2)", "-3")]
+    [InlineData("=ODD(0)", "1")]
+    [InlineData("=ODD(0.2)", "1")]
+    [InlineData("=ODD(A3)", "7")]
+    [InlineData("=ODD(A4)", "#VALUE!")]
+    public void Even_and_odd_round_away_from_zero(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A3", "7"), ("A4", "x"), ("C1", "=1/0")));
+    }
+
+    [Theory]
+    [InlineData("EVEN()", "EVEN at position 1 takes 1 argument, not 0.")]
+    [InlineData("ODD(1,2)", "ODD at position 1 takes 1 argument, not 2.")]
+    public void Even_and_odd_refuse_the_wrong_number_of_arguments(string formula, string message)
+    {
+        var error = Assert.Throws<FormulaException>(() => Parser.Parse(formula));
+        Assert.Equal(message, error.Message);
+    }
+
     // Microsoft's 3 QUOTIENT examples, then the cases around them.
     [Theory]
     [InlineData("=QUOTIENT(5, 2)", "2")]
@@ -418,7 +452,8 @@ public class FunctionTests
 
     [Theory]
     [InlineData("PI(1)", "PI at position 1 takes 0 arguments, not 1.")]
-    [InlineData("LOG10()", "LOG10 at position 1 takes 1 arguments, not 0.")]
+    [InlineData("LOG10()", "LOG10 at position 1 takes 1 argument, not 0.")]
+    [InlineData("SUM()", "SUM at position 1 takes at least 1 argument, not 0.")]
     public void Pi_and_log10_refuse_the_wrong_number_of_arguments(string formula, string message)
     {
         var error = Assert.Throws<FormulaException>(() => Parser.Parse(formula));

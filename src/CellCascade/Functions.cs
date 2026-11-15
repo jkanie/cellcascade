@@ -29,6 +29,8 @@ public static class Functions
         ["ROUNDDOWN"] = (2, 2),
         ["INT"] = (1, 1),
         ["TRUNC"] = (1, 2),
+        ["EVEN"] = (1, 1),
+        ["ODD"] = (1, 1),
         ["SIGN"] = (1, 1),
         ["SQRT"] = (1, 1),
         ["POWER"] = (2, 2),
@@ -68,7 +70,8 @@ public static class Functions
         if (Arity.TryGetValue(name, out var arity) && (count < arity.Min || count > arity.Max))
         {
             var wanted = arity.Min == arity.Max ? $"{arity.Min}" : arity.Max == Many ? $"at least {arity.Min}" : $"{arity.Min} to {arity.Max}";
-            throw new FormulaException($"{name} at position {position + 1} takes {wanted} arguments, not {count}.");
+            var noun = arity.Min == 1 && arity.Max is 1 or Many ? "argument" : "arguments";
+            throw new FormulaException($"{name} at position {position + 1} takes {wanted} {noun}, not {count}.");
         }
     }
 
@@ -95,6 +98,8 @@ public static class Functions
             "ROUNDDOWN" => Round(args, source, Rounding.TowardZero),
             "INT" => NumberFunction(args[0], source, Math.Floor),
             // TRUNC drops digits toward 0, so with num_digits it is ROUNDDOWN. Without it, num_digits is 0.
+            "EVEN" => NumberFunction(args[0], source, Even),
+            "ODD" => NumberFunction(args[0], source, Odd),
             "TRUNC" => args.Count == 1 ? NumberFunction(args[0], source, Math.Truncate) : Round(args, source, Rounding.TowardZero),
             "SIGN" => NumberFunction(args[0], source, number => Math.Sign(number)),
             // Math.Sqrt gives NaN below 0, which CellValue.Of turns into #NUM!, as SQRT does in Excel.
@@ -664,6 +669,25 @@ public static class Functions
         }
 
         return CellValue.Of(number - (divisor * Math.Floor(number / divisor)));
+    }
+
+    /// <summary>EVEN rounds away from 0 to an even whole number: EVEN(1.5) is 2, EVEN(-1) is -2, EVEN(2) stays 2.</summary>
+    private static double Even(double x)
+    {
+        var away = Math.Ceiling(Math.Abs(x) / 2) * 2;
+        return x < 0 ? -away : away;
+    }
+
+    /// <summary>ODD rounds away from 0 to an odd whole number: ODD(2) is 3, ODD(-2) is -3, and ODD(0) is 1.</summary>
+    private static double Odd(double x)
+    {
+        var away = Math.Ceiling(Math.Abs(x));
+        if (away % 2 == 0)
+        {
+            away += 1;
+        }
+
+        return x < 0 ? -away : away;
     }
 
     /// <summary>QUOTIENT(numerator, denominator): the whole part of the division, toward 0, so QUOTIENT(-10,3) is -3.</summary>
