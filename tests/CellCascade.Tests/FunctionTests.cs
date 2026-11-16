@@ -408,12 +408,38 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A2", "5"), ("A3", "15"), ("A4", "30"), ("B1", "text"), ("C1", "=1/0")));
     }
 
+    // Microsoft's 1 COMBIN example and 2 PERMUT examples (A2 holds 100, A3 holds 3), then the cases around them.
+    [Theory]
+    [InlineData("=COMBIN(8,2)", "28")]
+    [InlineData("=PERMUT(A2,A3)", "970200")]
+    [InlineData("=PERMUT(3,2)", "6")]
+    [InlineData("=COMBIN(8.9,2.9)", "28")]
+    [InlineData("=COMBIN(5,0)", "1")]
+    [InlineData("=COMBIN(5,5)", "1")]
+    [InlineData("=COMBIN(0,0)", "1")]
+    [InlineData("=COMBIN(52,5)", "2598960")]
+    [InlineData("=PERMUT(5,0)", "1")]
+    [InlineData("=COMBIN(\"8\",2)", "28")]
+    [InlineData("=COMBIN(-1,0)", "#NUM!")]
+    [InlineData("=COMBIN(3,4)", "#NUM!")]
+    [InlineData("=COMBIN(3,-1)", "#NUM!")]
+    [InlineData("=PERMUT(0,0)", "#NUM!")]
+    [InlineData("=PERMUT(3,4)", "#NUM!")]
+    [InlineData("=PERMUT(400,200)", "#NUM!")]
+    [InlineData("=COMBIN(\"x\",2)", "#VALUE!")]
+    [InlineData("=PERMUT(C1,2)", "#DIV/0!")]
+    public void Combin_and_permut_match_microsofts_examples(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A2", "100"), ("A3", "3"), ("C1", "=1/0")));
+    }
+
     [Theory]
     [InlineData("EVEN()", "EVEN at position 1 takes 1 argument, not 0.")]
     [InlineData("ODD(1,2)", "ODD at position 1 takes 1 argument, not 2.")]
     [InlineData("FACT(1,2)", "FACT at position 1 takes 1 argument, not 2.")]
     [InlineData("XOR()", "XOR at position 1 takes at least 1 argument, not 0.")]
     [InlineData("GCD()", "GCD at position 1 takes at least 1 argument, not 0.")]
+    [InlineData("COMBIN(8)", "COMBIN at position 1 takes 2 arguments, not 1.")]
     public void Even_and_odd_refuse_the_wrong_number_of_arguments(string formula, string message)
     {
         var error = Assert.Throws<FormulaException>(() => Parser.Parse(formula));

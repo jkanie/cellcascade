@@ -45,6 +45,8 @@ public static class Functions
         ["PI"] = (0, 0),
         ["MOD"] = (2, 2),
         ["QUOTIENT"] = (2, 2),
+        ["COMBIN"] = (2, 2),
+        ["PERMUT"] = (2, 2),
         ["CONCAT"] = (1, Many),
         ["LEN"] = (1, 1),
         ["UPPER"] = (1, 1),
@@ -123,6 +125,8 @@ public static class Functions
             "PI" => CellValue.Of(Math.PI),
             "MOD" => Mod(args, source),
             "QUOTIENT" => Quotient(args, source),
+            "COMBIN" => Choose(args, source, ordered: false),
+            "PERMUT" => Choose(args, source, ordered: true),
             "CONCAT" => Concat(args, source),
             "LEN" => TextFunction(args[0], source, text => CellValue.Of(text.Length)),
             "UPPER" => TextFunction(args[0], source, text => CellValue.Of(text.ToUpperInvariant())),
@@ -790,6 +794,42 @@ public static class Functions
         }
 
         return CellValue.Of(Math.Truncate(numerator / denominator));
+    }
+
+    /// <summary>
+    /// COMBIN and PERMUT: the ways to choose k of n things, without or with their order. As Microsoft documents,
+    /// both numbers are cut to whole numbers, and k below 0 or above n gives #NUM!, as does n below 0 (COMBIN) or
+    /// n of 0 or below (PERMUT). A result too large for a double is #NUM! too.
+    /// </summary>
+    private static CellValue Choose(IReadOnlyList<Expr> args, IValueSource source, bool ordered)
+    {
+        if (!Evaluator.TryNumber(Scalar(args[0], source), out var number, out var error))
+        {
+            return error!;
+        }
+
+        if (!Evaluator.TryNumber(Scalar(args[1], source), out var chosen, out error))
+        {
+            return error!;
+        }
+
+        var n = Math.Truncate(number);
+        var k = Math.Truncate(chosen);
+        if (k < 0 || n < k || (ordered ? n <= 0 : n < 0))
+        {
+            return CellValue.Error(ErrorKind.Number);
+        }
+
+        // Each step multiplies by the next factor of n! / (n - k)!, divided by i for COMBIN, which keeps the product
+        // a whole number after every step and stops once it can no longer be held.
+        var take = ordered ? k : Math.Min(k, n - k);
+        var result = 1.0;
+        for (var i = 1.0; i <= take && !double.IsInfinity(result); i++)
+        {
+            result = ordered ? result * (n - i + 1) : result * (n - i + 1) / i;
+        }
+
+        return CellValue.Of(Math.Round(result));
     }
 
     private static CellValue Concat(IReadOnlyList<Expr> args, IValueSource source)
