@@ -433,6 +433,25 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A2", "100"), ("A3", "3"), ("C1", "=1/0")));
     }
 
+    // Microsoft's DEGREES example and its RADIANS example, the latter rounded to the 6 decimals Microsoft shows
+    // (3 pi / 2), then the cases around them.
+    [Theory]
+    [InlineData("=DEGREES(PI())", "180")]
+    [InlineData("=ROUND(RADIANS(270),6)", "4.712389")]
+    [InlineData("=RADIANS(270)=3*PI()/2", "TRUE")]
+    [InlineData("=DEGREES(PI()/2)", "90")]
+    [InlineData("=RADIANS(180)", "3.14159265358979")]
+    [InlineData("=DEGREES(RADIANS(A2))", "-45")]
+    [InlineData("=DEGREES(0)", "0")]
+    [InlineData("=RADIANS(\"90\")=PI()/2", "TRUE")]
+    [InlineData("=DEGREES(10^307)", "#NUM!")]
+    [InlineData("=RADIANS(\"x\")", "#VALUE!")]
+    [InlineData("=DEGREES(C1)", "#DIV/0!")]
+    public void Degrees_and_radians_match_microsofts_examples(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A2", "-45"), ("C1", "=1/0")));
+    }
+
     [Theory]
     [InlineData("EVEN()", "EVEN at position 1 takes 1 argument, not 0.")]
     [InlineData("ODD(1,2)", "ODD at position 1 takes 1 argument, not 2.")]
@@ -440,6 +459,8 @@ public class FunctionTests
     [InlineData("XOR()", "XOR at position 1 takes at least 1 argument, not 0.")]
     [InlineData("GCD()", "GCD at position 1 takes at least 1 argument, not 0.")]
     [InlineData("COMBIN(8)", "COMBIN at position 1 takes 2 arguments, not 1.")]
+    [InlineData("DEGREES()", "DEGREES at position 1 takes 1 argument, not 0.")]
+    [InlineData("RADIANS(1,2)", "RADIANS at position 1 takes 1 argument, not 2.")]
     public void Even_and_odd_refuse_the_wrong_number_of_arguments(string formula, string message)
     {
         var error = Assert.Throws<FormulaException>(() => Parser.Parse(formula));

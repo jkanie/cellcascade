@@ -43,6 +43,8 @@ public static class Functions
         ["LOG"] = (1, 2),
         ["LOG10"] = (1, 1),
         ["PI"] = (0, 0),
+        ["DEGREES"] = (1, 1),
+        ["RADIANS"] = (1, 1),
         ["MOD"] = (2, 2),
         ["QUOTIENT"] = (2, 2),
         ["COMBIN"] = (2, 2),
@@ -123,6 +125,9 @@ public static class Functions
             "LOG10" => NumberFunction(args[0], source, Math.Log10),
             "LOG" => Log(args, source),
             "PI" => CellValue.Of(Math.PI),
+            // An angle too large to hold once converted is #NUM!, as for EXP.
+            "DEGREES" => NumberFunction(args[0], source, angle => angle * 180 / Math.PI),
+            "RADIANS" => NumberFunction(args[0], source, angle => angle * Math.PI / 180),
             "MOD" => Mod(args, source),
             "QUOTIENT" => Quotient(args, source),
             "COMBIN" => Choose(args, source, ordered: false),
