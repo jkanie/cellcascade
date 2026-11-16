@@ -357,9 +357,36 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A3", "7"), ("A4", "x"), ("C1", "=1/0")));
     }
 
+    // Microsoft's 2 XOR examples and 5 FACT examples, then the cases around them.
+    [Theory]
+    [InlineData("=XOR(3>0,2<9)", "FALSE")]
+    [InlineData("=XOR(3>12,4>6)", "FALSE")]
+    [InlineData("=XOR(TRUE,FALSE)", "TRUE")]
+    [InlineData("=XOR(TRUE,TRUE,TRUE)", "TRUE")]
+    [InlineData("=XOR(1,0,\"TRUE\")", "FALSE")]
+    [InlineData("=XOR(A1:A4)", "TRUE")]
+    [InlineData("=XOR(A2:A3)", "#VALUE!")]
+    [InlineData("=XOR(\"maybe\")", "#VALUE!")]
+    [InlineData("=XOR(C1,TRUE)", "#DIV/0!")]
+    [InlineData("=FACT(5)", "120")]
+    [InlineData("=FACT(1.9)", "1")]
+    [InlineData("=FACT(0)", "1")]
+    [InlineData("=FACT(-1)", "#NUM!")]
+    [InlineData("=FACT(1)", "1")]
+    [InlineData("=FACT(10)", "3628800")]
+    [InlineData("=FACT(171)", "#NUM!")]
+    [InlineData("=FACT(A4)", "#VALUE!")]
+    [InlineData("=FACT(\"3\")", "6")]
+    public void Xor_and_fact_match_microsofts_examples(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A1", "TRUE"), ("A2", "x"), ("A4", "y"), ("C1", "=1/0")));
+    }
+
     [Theory]
     [InlineData("EVEN()", "EVEN at position 1 takes 1 argument, not 0.")]
     [InlineData("ODD(1,2)", "ODD at position 1 takes 1 argument, not 2.")]
+    [InlineData("FACT(1,2)", "FACT at position 1 takes 1 argument, not 2.")]
+    [InlineData("XOR()", "XOR at position 1 takes at least 1 argument, not 0.")]
     public void Even_and_odd_refuse_the_wrong_number_of_arguments(string formula, string message)
     {
         var error = Assert.Throws<FormulaException>(() => Parser.Parse(formula));

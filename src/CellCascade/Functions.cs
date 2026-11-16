@@ -20,6 +20,7 @@ public static class Functions
         ["COUNTA"] = (1, Many),
         ["AND"] = (1, Many),
         ["OR"] = (1, Many),
+        ["XOR"] = (1, Many),
         ["NOT"] = (1, 1),
         ["IF"] = (2, 3),
         ["IFERROR"] = (2, 2),
@@ -31,6 +32,7 @@ public static class Functions
         ["TRUNC"] = (1, 2),
         ["EVEN"] = (1, 1),
         ["ODD"] = (1, 1),
+        ["FACT"] = (1, 1),
         ["SIGN"] = (1, 1),
         ["SQRT"] = (1, 1),
         ["POWER"] = (2, 2),
@@ -87,8 +89,10 @@ public static class Functions
             "PRODUCT" => Aggregate(args, source, values => values.Count == 0 ? 0 : values.Aggregate(1.0, (product, value) => product * value)),
             "COUNT" => Count(args, source),
             "COUNTA" => CountA(args, source),
-            "AND" => Logical(args, source, all: true),
-            "OR" => Logical(args, source, all: false),
+            "AND" => Logical(args, source, (trues, tested) => trues == tested),
+            "OR" => Logical(args, source, (trues, _) => trues > 0),
+            // XOR is TRUE when an odd number of its values are TRUE, as Microsoft documents it.
+            "XOR" => Logical(args, source, (trues, _) => trues % 2 == 1),
             "NOT" => Not(args[0], source),
             "IF" => If(args, source),
             "IFERROR" => IfError(args, source),
@@ -100,6 +104,7 @@ public static class Functions
             // TRUNC drops digits toward 0, so with num_digits it is ROUNDDOWN. Without it, num_digits is 0.
             "EVEN" => NumberFunction(args[0], source, Even),
             "ODD" => NumberFunction(args[0], source, Odd),
+            "FACT" => NumberFunction(args[0], source, Fact),
             "TRUNC" => args.Count == 1 ? NumberFunction(args[0], source, Math.Truncate) : Round(args, source, Rounding.TowardZero),
             "SIGN" => NumberFunction(args[0], source, number => Math.Sign(number)),
             // Math.Sqrt gives NaN below 0, which CellValue.Of turns into #NUM!, as SQRT does in Excel.
@@ -217,11 +222,14 @@ public static class Functions
         return CellValue.Of(count);
     }
 
-    /// <summary>AND and OR. In ranges, text and blank cells are skipped. With no value to test, the result is #VALUE!.</summary>
-    private static CellValue Logical(IReadOnlyList<Expr> args, IValueSource source, bool all)
+    /// <summary>
+    /// AND, OR, XOR. In ranges, text and blank cells are skipped. With no value to test, the result is #VALUE!.
+    /// decide gets the count of TRUE values and the count of values tested.
+    /// </summary>
+    private static CellValue Logical(IReadOnlyList<Expr> args, IValueSource source, Func<int, int, bool> decide)
     {
-        var seen = false;
-        var result = all;
+        var tested = 0;
+        var trues = 0;
         foreach (var arg in args)
         {
             var cells = CellsOf(arg, source);
@@ -235,12 +243,12 @@ public static class Functions
                     return error!;
                 }
 
-                seen = true;
-                result = all ? result && flag : result || flag;
+                tested++;
+                trues += flag ? 1 : 0;
             }
         }
 
-        return seen ? CellValue.Of(result) : CellValue.Error(ErrorKind.Value);
+        return tested > 0 ? CellValue.Of(decide(trues, tested)) : CellValue.Error(ErrorKind.Value);
     }
 
     private static CellValue Not(Expr arg, IValueSource source) =>
@@ -688,6 +696,27 @@ public static class Functions
         }
 
         return x < 0 ? -away : away;
+    }
+
+    /// <summary>
+    /// FACT gives the factorial of the whole part of its number, so FACT(1.9) is 1. Below 0 it gives NaN, and from 171
+    /// on the product does not fit in a double. CellValue.Of makes both #NUM!.
+    /// </summary>
+    private static double Fact(double x)
+    {
+        if (x < 0)
+        {
+            return double.NaN;
+        }
+
+        var n = Math.Floor(x);
+        var product = 1.0;
+        for (var i = 2.0; i <= n && !double.IsInfinity(product); i++)
+        {
+            product *= i;
+        }
+
+        return product;
     }
 
     /// <summary>QUOTIENT(numerator, denominator): the whole part of the division, toward 0, so QUOTIENT(-10,3) is -3.</summary>
