@@ -33,6 +33,8 @@ public static class Functions
         ["EVEN"] = (1, 1),
         ["ODD"] = (1, 1),
         ["FACT"] = (1, 1),
+        ["GCD"] = (1, Many),
+        ["LCM"] = (1, Many),
         ["SIGN"] = (1, 1),
         ["SQRT"] = (1, 1),
         ["POWER"] = (2, 2),
@@ -105,6 +107,8 @@ public static class Functions
             "EVEN" => NumberFunction(args[0], source, Even),
             "ODD" => NumberFunction(args[0], source, Odd),
             "FACT" => NumberFunction(args[0], source, Fact),
+            "GCD" => WholeNumbers(args, source, Gcd),
+            "LCM" => WholeNumbers(args, source, Lcm),
             "TRUNC" => args.Count == 1 ? NumberFunction(args[0], source, Math.Truncate) : Round(args, source, Rounding.TowardZero),
             "SIGN" => NumberFunction(args[0], source, number => Math.Sign(number)),
             // Math.Sqrt gives NaN below 0, which CellValue.Of turns into #NUM!, as SQRT does in Excel.
@@ -717,6 +721,54 @@ public static class Functions
         }
 
         return product;
+    }
+
+    /// <summary>
+    /// GCD and LCM take the numbers as SUM does, each cut to its whole part. Below 0 or from 2^53 on, a number gives
+    /// #NUM!, as Microsoft documents, and so does an LCM from 2^53 on. With no number at all, the result is #VALUE!.
+    /// </summary>
+    private static CellValue WholeNumbers(IReadOnlyList<Expr> args, IValueSource source, Func<List<long>, double> combine)
+    {
+        var none = false;
+        var result = Aggregate(args, source, values =>
+        {
+            none = values.Count == 0;
+            if (values.Any(v => v < 0 || v >= WholeLimit))
+            {
+                return double.NaN;
+            }
+
+            return combine(values.Select(v => (long)Math.Truncate(v)).ToList());
+        });
+        return none && result is not ErrorValue ? CellValue.Error(ErrorKind.Value) : result;
+    }
+
+    private const double WholeLimit = 9007199254740992; // 2^53
+
+    private static long Euclid(long a, long b) => b == 0 ? a : Euclid(b, a % b);
+
+    private static double Gcd(List<long> values) => values.Aggregate(0L, Euclid);
+
+    private static double Lcm(List<long> values)
+    {
+        if (values.Contains(0))
+        {
+            return 0;
+        }
+
+        long lcm = 1;
+        foreach (var v in values)
+        {
+            var next = (double)(lcm / Euclid(lcm, v)) * v;
+            if (next >= WholeLimit)
+            {
+                return double.NaN;
+            }
+
+            lcm = (long)next;
+        }
+
+        return lcm;
     }
 
     /// <summary>QUOTIENT(numerator, denominator): the whole part of the division, toward 0, so QUOTIENT(-10,3) is -3.</summary>

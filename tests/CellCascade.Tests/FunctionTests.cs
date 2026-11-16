@@ -382,11 +382,38 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A1", "TRUE"), ("A2", "x"), ("A4", "y"), ("C1", "=1/0")));
     }
 
+    // Microsoft's 4 GCD examples and 2 LCM examples, then the cases around them. A2:A4 hold 5, 15, 30.
+    [Theory]
+    [InlineData("=GCD(5, 2)", "1")]
+    [InlineData("=GCD(24, 36)", "12")]
+    [InlineData("=GCD(7, 1)", "1")]
+    [InlineData("=GCD(5, 0)", "5")]
+    [InlineData("=LCM(5, 2)", "10")]
+    [InlineData("=LCM(24, 36)", "72")]
+    [InlineData("=GCD(24.9, 36.5)", "12")]
+    [InlineData("=GCD(A2:A4)", "5")]
+    [InlineData("=LCM(A2:A4)", "30")]
+    [InlineData("=LCM(A2:A4, 4)", "60")]
+    [InlineData("=LCM(0, 5)", "0")]
+    [InlineData("=GCD(\"12\", 18)", "6")]
+    [InlineData("=GCD(-1, 2)", "#NUM!")]
+    [InlineData("=LCM(0, -2)", "#NUM!")]
+    [InlineData("=GCD(POWER(2,53), 2)", "#NUM!")]
+    [InlineData("=LCM(POWER(2,30), POWER(3,20))", "#NUM!")]
+    [InlineData("=GCD(\"x\")", "#VALUE!")]
+    [InlineData("=LCM(B1:B3)", "#VALUE!")]
+    [InlineData("=GCD(C1, 2)", "#DIV/0!")]
+    public void Gcd_and_lcm_match_microsofts_examples(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A2", "5"), ("A3", "15"), ("A4", "30"), ("B1", "text"), ("C1", "=1/0")));
+    }
+
     [Theory]
     [InlineData("EVEN()", "EVEN at position 1 takes 1 argument, not 0.")]
     [InlineData("ODD(1,2)", "ODD at position 1 takes 1 argument, not 2.")]
     [InlineData("FACT(1,2)", "FACT at position 1 takes 1 argument, not 2.")]
     [InlineData("XOR()", "XOR at position 1 takes at least 1 argument, not 0.")]
+    [InlineData("GCD()", "GCD at position 1 takes at least 1 argument, not 0.")]
     public void Even_and_odd_refuse_the_wrong_number_of_arguments(string formula, string message)
     {
         var error = Assert.Throws<FormulaException>(() => Parser.Parse(formula));
