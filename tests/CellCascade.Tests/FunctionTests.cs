@@ -452,6 +452,30 @@ public class FunctionTests
         Assert.Equal(expected, Eval.Display(formula, ("A2", "-45"), ("C1", "=1/0")));
     }
 
+    // Microsoft's SIN, COS, TAN examples. Where Microsoft rounds (0.0 for the sine of pi, 7 decimals for COS(1.047),
+    // 5 for TAN(0.785)), ROUND gives the same number of decimals. Then the cases around them.
+    [Theory]
+    [InlineData("=ROUND(SIN(PI()),15)", "0")]
+    [InlineData("=SIN(PI()/2)", "1")]
+    [InlineData("=SIN(30*PI()/180)", "0.5")]
+    [InlineData("=SIN(RADIANS(30))", "0.5")]
+    [InlineData("=ROUND(COS(1.047),7)", "0.5001711")]
+    [InlineData("=COS(60*PI()/180)", "0.5")]
+    [InlineData("=COS(RADIANS(60))", "0.5")]
+    [InlineData("=ROUND(TAN(0.785),5)", "0.9992")]
+    [InlineData("=TAN(45*PI()/180)", "1")]
+    [InlineData("=TAN(RADIANS(45))", "1")]
+    [InlineData("=COS(0)", "1")]
+    [InlineData("=SIN(-A2)=-SIN(A2)", "TRUE")]
+    [InlineData("=SIN(A2)^2+COS(A2)^2", "1")]
+    [InlineData("=ROUND(TAN(A2)-SIN(A2)/COS(A2),15)", "0")]
+    [InlineData("=SIN(\"x\")", "#VALUE!")]
+    [InlineData("=COS(C1)", "#DIV/0!")]
+    public void Sin_cos_tan_match_microsofts_examples(string formula, string expected)
+    {
+        Assert.Equal(expected, Eval.Display(formula, ("A2", "0.7"), ("C1", "=1/0")));
+    }
+
     [Theory]
     [InlineData("EVEN()", "EVEN at position 1 takes 1 argument, not 0.")]
     [InlineData("ODD(1,2)", "ODD at position 1 takes 1 argument, not 2.")]
@@ -461,6 +485,8 @@ public class FunctionTests
     [InlineData("COMBIN(8)", "COMBIN at position 1 takes 2 arguments, not 1.")]
     [InlineData("DEGREES()", "DEGREES at position 1 takes 1 argument, not 0.")]
     [InlineData("RADIANS(1,2)", "RADIANS at position 1 takes 1 argument, not 2.")]
+    [InlineData("SIN()", "SIN at position 1 takes 1 argument, not 0.")]
+    [InlineData("TAN(1,2)", "TAN at position 1 takes 1 argument, not 2.")]
     public void Even_and_odd_refuse_the_wrong_number_of_arguments(string formula, string message)
     {
         var error = Assert.Throws<FormulaException>(() => Parser.Parse(formula));
